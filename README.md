@@ -1,92 +1,73 @@
-# CryptoPay MVP
+# React + TypeScript + Vite
 
-UX-first crypto payment infrastructure designed to make paying with crypto as simple as Stripe.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Vision
+Currently, two official plugins are available:
 
-Enable anyone — novice or expert — to pay in crypto via link or QR code in **2 steps maximum**, with:
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-- Clear summary
-- Transparent fees
-- Live payment status
-- Automatic wallet detection
+## React Compiler
 
----
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## MVP Scope
+## Expanding the ESLint configuration
 
-### Core Features
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-**Payment Link + QR Generator**
-- Enter amount
-- Select currency (USDC, USDT, ETH)
-- Select network (1–2 chains initially)
-- Generate shareable link
-- Generate QR code
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-**Wallet Detection**
-- Automatic wallet detection
-- Deep linking (MetaMask, WalletConnect, mobile wallets)
-- Browser fallback
-- Universal QR fallback
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
 
-**2-Step Payment Flow**
-1. Clear summary (amount, network, fees, total)
-2. Confirm payment
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
 
-**Live Status**
-- Pending
-- Confirmed
-- Failed
-- Expired
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-**Fee Estimation**
-- Gas estimation
-- Transparent breakdown
-- Human-readable explanation
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-**Notifications**
-- Email
-- Webhook
-
-**Dashboard**
-- Payment history
-- Status tracking
-- Filters
-- CSV export
-
----
-
-## Architecture Principles
-
-- Multi-chain ready from v1
-- ChainAdapter abstraction layer
-- No blockchain logic hardcoded
-- Modular backend
-- Horizontally scalable
-- Production-ready code
-- Upgradeable infrastructure
-- Event-driven payment lifecycle
-
----
-
-## High-Level Architecture
-
-Frontend (Next.js)
-↓
-Backend API (Node.js / NestJS)
-↓
-Payment Service
-↓
-ChainAdapter Layer
-↓
-Blockchain (Ethereum / L2)
-
-Supporting services:
-- PostgreSQL
-- Redis
-- Queue (BullMQ / similar)
-- Webhook dispatcher
-- Email service
-
----
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
