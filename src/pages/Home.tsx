@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield } from 'lucide-react'
 import type { Crypto, Network } from '../types'
 import { estimateFees, generateId, shortAddr } from '../data/mock'
+import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 
 const CRYPTOS: { id: Crypto; icon: string; color: string }[] = [
   { id: 'USDC', icon: '$', color: '#2775ca' },
@@ -42,6 +43,7 @@ export default function Home() {
   const [network, setNetwork] = useState<Network>('Base')
   const [copied, setCopied] = useState(false)
   const [paymentId] = useState(generateId())
+  const { ethPrice } = useEthPrice()
 
   const numAmount = parseFloat(amount) || 0
   const fees = numAmount > 0 ? estimateFees(numAmount, crypto, network) : 0
@@ -110,7 +112,15 @@ export default function Home() {
 
               <div className="result-right fade-up d2">
                 <div className="sum-row"><span className="sum-label">To</span><span className="sum-val mono text-xs">{shortAddr(address)}</span></div>
-                <div className="sum-row"><span className="sum-label">Amount</span><span className="sum-val">{amount} {crypto}</span></div>
+                <div className="sum-row">
+                  <span className="sum-label">Amount</span>
+                  <span className="sum-val">
+                    {amount} {crypto}
+                    {crypto === 'ETH' && ethPrice && (
+                      <span className="usd-conv"> ≈ {formatUsd(numAmount, ethPrice)}</span>
+                    )}
+                  </span>
+                </div>
                 <div className="sum-row"><span className="sum-label">Network</span><span className="sum-val">{network}</span></div>
                 <div className="sum-row"><span className="sum-label">Fees</span><span className="sum-val">{fees} {crypto}</span></div>
               </div>
@@ -238,7 +248,15 @@ export default function Home() {
               <div className="sum-row"><span className="sum-label">Amount</span><span className="sum-val">{amount} {crypto}</span></div>
               <div className="sum-row"><span className="sum-label">Fee ({network})</span><span className="sum-val">{fees} {crypto}</span></div>
               <hr className="sum-div" />
-              <div className="sum-row sum-total"><span className="sum-label">Total</span><span className="sum-val">{total.toFixed(4)} {crypto}</span></div>
+              <div className="sum-row sum-total">
+                <span className="sum-label">Total</span>
+                <span className="sum-val">
+                  {total.toFixed(4)} {crypto}
+                  {crypto === 'ETH' && ethPrice && (
+                    <span className="usd-conv"> ≈ {formatUsd(total, ethPrice)}</span>
+                  )}
+                </span>
+              </div>
             </div>
           )}
 
