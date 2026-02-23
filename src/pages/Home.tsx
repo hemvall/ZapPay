@@ -52,9 +52,23 @@ export default function Home() {
   const isValid = numAmount > 0 && hasAddress
   const paymentLink = `${window.location.origin}/pay/${paymentId}`
 
-  const mockConnect = () => {
-    setWalletConnected(true)
-    setAddress('0x1a2b3c4d5e6f7890abcdef1234567890abcd9f3c')
+  const connectWallet = async () => {
+    try {
+      const anyWindow = window as any
+      if (anyWindow.ethereum && anyWindow.ethereum.request) {
+        const accounts: string[] = await anyWindow.ethereum.request({ method: 'eth_requestAccounts' })
+        const acc = accounts && accounts[0]
+        if (acc) {
+          setWalletConnected(true)
+          setAddress(acc)
+        }
+      } else {
+        // no injected wallet
+        alert('No Web3 wallet found. Please install MetaMask or paste an address manually.')
+      }
+    } catch (err) {
+      console.error('connectWallet error', err)
+    }
   }
 
   const handleCopy = () => {
@@ -173,7 +187,7 @@ export default function Home() {
             <div className="field-label">Receive to</div>
             <button
               className={`btn-wallet ${walletConnected ? 'connected' : ''}`}
-              onClick={mockConnect}
+              onClick={connectWallet}
             >
               <Wallet size={15} />
               {walletConnected ? `Connected  ${shortAddr(address)}` : 'Connect Wallet'}
