@@ -1,23 +1,61 @@
 const paymentService = require('../services/payment.service');
 
-const getPayment = (req, res) => {
-  const result = paymentService.getPayment(req.params.id);
-  res.json(result);
+const createPayment = async (req, res, next) => {
+  try {
+    const { amount, token, network, recipientAddress, label } = req.body;
+
+    const missing = [];
+    if (!amount) missing.push('amount');
+    if (!token) missing.push('token');
+    if (!network) missing.push('network');
+    if (!recipientAddress) missing.push('recipientAddress');
+
+    if (missing.length > 0) {
+      return res.status(400).json({
+        error: `Missing required fields: ${missing.join(', ')}`,
+      });
+    }
+
+    const result = await paymentService.createPayment({
+      amount,
+      token,
+      network,
+      recipientAddress,
+      label,
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
 };
 
-const createPayment = (req, res) => {
-  const result = paymentService.createPayment(req.body);
-  res.json(result);
+const getPayment = async (req, res, next) => {
+  try {
+    const result = await paymentService.getPayment(req.params.id);
+    if (!result) return res.status(404).json({ error: 'Payment not found' });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 };
 
-const listPayments = (req, res) => {
-  const result = paymentService.listPayments();
-  res.json(result);
+const listPayments = async (req, res, next) => {
+  try {
+    const result = await paymentService.listPayments();
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 };
 
-const getPaymentForPayer = (req, res) => {
-  const result = paymentService.getPaymentForPayer(req.params.id);
-  res.json(result);
+const getPaymentForPayer = async (req, res, next) => {
+  try {
+    const result = await paymentService.getPaymentForPayer(req.params.id);
+    if (!result) return res.status(404).json({ error: 'Payment not found' });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 };
 
 module.exports = {
