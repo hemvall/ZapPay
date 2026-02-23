@@ -78,6 +78,18 @@ src/
 - `/` - Home page with payment options
 - `/pay/:id` - Payment flow for specific transaction
 
+## Flow
+`
+flowchart LR
+A[Client / Merchant] --> B[Route POST /payments]
+B --> C[Controller.createPayment]
+C --> D[Service.paymentService.createPayment]
+D --> E[Chain Adapter / Repository]
+E --> C
+C --> B
+B --> A[Response JSON]
+`
+
 ## License
 
 MIT
