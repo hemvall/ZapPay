@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Check, Shield, ArrowRight, ExternalLink } from 'lucide-react'
+import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 
 export default function PayFlow() {
   const { id } = useParams()
   const [step, setStep] = useState<'summary' | 'processing' | 'done'>('summary')
 
+  const { ethPrice } = useEthPrice()
+
   // Mock — in production fetched from backend by id
   const payment = { id, amount: 50, crypto: 'USDC', network: 'Base', recipient: '0x1a2b...9f3c', fees: 0.10 }
   const total = payment.amount + payment.fees
+  const isEth = payment.crypto === 'ETH'
 
   const handlePay = () => {
     setStep('processing')
@@ -28,7 +32,10 @@ export default function PayFlow() {
               <Check size={30} style={{ color: 'var(--success)' }} />
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Payment confirmed</h2>
-            <p className="text-s muted mb-24">{payment.amount} {payment.crypto} sent successfully</p>
+            <p className="text-s muted mb-24">
+              {payment.amount} {payment.crypto} sent successfully
+              {isEth && ethPrice && <> ({formatUsd(payment.amount, ethPrice)})</>}
+            </p>
 
             <div style={{ textAlign: 'left' }}>
               <div className="sum-row">
@@ -50,7 +57,12 @@ export default function PayFlow() {
               <hr className="sum-div" />
               <div className="sum-row sum-total">
                 <span className="sum-label">Total paid</span>
-                <span className="sum-val">{total.toFixed(2)} {payment.crypto}</span>
+                <span className="sum-val">
+                  {total.toFixed(2)} {payment.crypto}
+                  {isEth && ethPrice && (
+                    <span className="usd-conv"> ≈ {formatUsd(total, ethPrice)}</span>
+                  )}
+                </span>
               </div>
             </div>
 
@@ -125,6 +137,11 @@ export default function PayFlow() {
 
           <div className="pay-hero">
             <div className="pay-amount">{payment.amount} {payment.crypto}</div>
+            {isEth && ethPrice && (
+              <p className="text-s muted" style={{ marginTop: 4 }}>
+                ≈ {formatUsd(payment.amount, ethPrice)}
+              </p>
+            )}
             <p className="text-xs dim mt-6">on {payment.network}</p>
           </div>
 
@@ -140,12 +157,19 @@ export default function PayFlow() {
             <hr className="sum-div" />
             <div className="sum-row sum-total">
               <span className="sum-label">Total</span>
-              <span className="sum-val">{total.toFixed(2)} {payment.crypto}</span>
+              <span className="sum-val">
+                {total.toFixed(2)} {payment.crypto}
+                {isEth && ethPrice && (
+                  <span className="usd-conv"> ≈ {formatUsd(total, ethPrice)}</span>
+                )}
+              </span>
             </div>
           </div>
 
           <button className="btn-primary mt-8" onClick={handlePay}>
-            Pay {total.toFixed(2)} {payment.crypto} <ArrowRight size={15} />
+            Pay {total.toFixed(2)} {payment.crypto}
+            {isEth && ethPrice && <span className="text-xs" style={{ opacity: 0.7, marginLeft: 4 }}>({formatUsd(total, ethPrice)})</span>}
+            {' '}<ArrowRight size={15} />
           </button>
 
           <p className="text-xs dim text-c mt-16">
