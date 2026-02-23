@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield } from 'lucide-react'
+import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield, Loader2 } from 'lucide-react'
 import type { Crypto, Network } from '../types'
-import { estimateFees, generateId, shortAddr } from '../data/mock'
+import { estimateFees, shortAddr } from '../data/mock'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
 
 const CRYPTOS: { id: Crypto; icon: string; color: string }[] = [
   { id: 'USDC', icon: '$', color: '#2775ca' },
@@ -42,7 +44,10 @@ export default function Home() {
   const [crypto, setCrypto] = useState<Crypto>('USDC')
   const [network, setNetwork] = useState<Network>('Base')
   const [copied, setCopied] = useState(false)
-  const [paymentId] = useState(generateId())
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [paymentLink, setPaymentLink] = useState('')
+  const [apiFees, setApiFees] = useState('')
   const { ethPrice } = useEthPrice()
 
   const numAmount = parseFloat(amount) || 0
@@ -50,7 +55,6 @@ export default function Home() {
   const total = numAmount + fees
   const hasAddress = walletConnected || address.length >= 10
   const isValid = numAmount > 0 && hasAddress
-  const paymentLink = `${window.location.origin}/pay/${paymentId}`
 
   const connectWallet = async () => {
     try {
@@ -68,6 +72,35 @@ export default function Home() {
       }
     } catch (err) {
       console.error('connectWallet error', err)
+    }
+  }
+
+  const handleGenerate = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_URL}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: String(numAmount),
+          token: crypto,
+          network: network.toLowerCase(),
+          recipientAddress: address,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error || `Server error (${res.status})`)
+      }
+      const data = await res.json()
+      setPaymentLink(data.paymentUrl)
+      setApiFees(data.estimatedFees)
+      setStep('result')
+    } catch (err: any) {
+      setError(err.message || 'Failed to create payment')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -90,6 +123,9 @@ export default function Home() {
     setAmount('')
     setAddress('')
     setWalletConnected(false)
+    setPaymentLink('')
+    setApiFees('')
+    setError('')
   }
 
   // ─── Result ───
@@ -136,7 +172,7 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="sum-row"><span className="sum-label">Network</span><span className="sum-val">{network}</span></div>
-                <div className="sum-row"><span className="sum-label">Fees</span><span className="sum-val">{fees} {crypto}</span></div>
+                <div className="sum-row"><span className="sum-label">Fees</span><span className="sum-val">{apiFees || fees} {crypto}</span></div>
               </div>
             </div>
 
@@ -275,8 +311,9 @@ export default function Home() {
           )}
 
           {/* CTA */}
-          <button className="btn-primary" onClick={() => setStep('result')} disabled={!hasAddress}>
-            <QrCode size={15} /> Generate payment link
+          {error && <p className="text-xs" style={{ color: '#ef4444', textAlign: 'center', marginBottom: 8 }}>{error}</p>}
+          <button className="btn-primary" onClick={handleGenerate} disabled={!isValid || loading}>
+            {loading ? <><Loader2 size={15} className="spin" /> Creating...</> : <><QrCode size={15} /> Generate payment link</>}
           </button>
         </div>
 

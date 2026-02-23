@@ -464,6 +464,7 @@ input, select { font: inherit; color: inherit; }
    KEYFRAMES
    ═══════════════════════════════ */
 @keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
 @keyframes pop { 0%{transform:scale(0)}60%{transform:scale(1.1)}100%{transform:scale(1)} }
 @keyframes fadeUp { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
 .fade-up { animation: fadeUp 0.3s var(--ease) both; }
