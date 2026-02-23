@@ -1,73 +1,55 @@
-const store = {
-    "1": {
-        id: "1",
-        amount: "50.00",
-        currency: "USDC",
-        description: "Test payment #1",
-        status: "created",
-        createdAt: "2026-02-23T10:00:00.000Z",
-        paymentAddress: "0xAbC123...ETH",
-        estimatedFees: "0.23",
-    },
-    "2": {
-        id: "2",
-        amount: "120.50",
-        currency: "ETH",
-        description: "Test payment #2",
-        status: "pending",
-        createdAt: "2026-02-23T11:00:00.000Z",
-        paymentAddress: "0xDeF456...ETH",
-        estimatedFees: "0.50",
-    },
-    "3": {
-        id: "3",
-        amount: "75.00",
-        currency: "USDT",
-        description: "Test payment #3",
-        status: "confirmed",
-        createdAt: "2026-02-23T09:30:00.000Z",
-        paymentAddress: "0xGhI789...ETH",
-        estimatedFees: "0.30",
-    }
+const prisma = require('../lib/prisma');
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+// Simple fee estimates per network (in USD)
+const NETWORK_FEES = {
+  ethereum: '0.23',
+  polygon: '0.01',
+  arbitrum: '0.03',
+  optimism: '0.04',
+  base: '0.02',
 };
-let nextId = 1;
 
-function createPayment({ amount, currency = 'USD', description = '' }) {
-    const id = String(nextId++);
-    const payment = {
-        id,
-        amount,
-        currency,
-        description,
-        status: 'created',
-        createdAt: new Date().toISOString(),
-    };
-    store[id] = payment;
-    return payment;
+async function createPayment({ amount, token, network, recipientAddress, label }) {
+  const payment = await prisma.payment.create({
+    data: { amount, token, network, recipientAddress, label },
+  });
+
+  const paymentUrl = `${FRONTEND_URL}/pay/${payment.id}`;
+  const qrCode = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(paymentUrl)}&size=200x200`;
+  const estimatedFees = NETWORK_FEES[network.toLowerCase()] || '0.00';
+
+  return {
+    paymentId: payment.id,
+    paymentUrl,
+    qrCode,
+    estimatedFees,
+  };
 }
 
-function getPayment(id) {
-    return store[id] || null;
+async function getPayment(id) {
+  return prisma.payment.findUnique({ where: { id } });
 }
 
-function getPaymentForPayer(id) {
-    return store[id] || null;
+async function getPaymentForPayer(id) {
+  return prisma.payment.findUnique({ where: { id } });
 }
 
-function listPayments() {
-    return store ? Object.values(store) : [];
+async function listPayments() {
+  return prisma.payment.findMany({ orderBy: { createdAt: 'desc' } });
 }
 
-function updatePayment(id, patch) {
-    if (!store[id]) return null;
-    store[id] = { ...store[id], ...patch };
-    return store[id];
+async function updatePayment(id, patch) {
+  const existing = await prisma.payment.findUnique({ where: { id } });
+  if (!existing) return null;
+  return prisma.payment.update({ where: { id }, data: patch });
 }
 
 module.exports = {
-    createPayment,
-    getPayment,
-    getPaymentForPayer,
-    listPayments,
-    updatePayment,
+  createPayment,
+  getPayment,
+  getPaymentForPayer,
+  listPayments,
+  updatePayment,
 };
