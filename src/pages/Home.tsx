@@ -243,7 +243,7 @@ export default function Home() {
           )}
 
           {/* CTA */}
-          <button className="btn-primary" onClick={() => setStep('result')} disabled={!isValid}>
+          <button className="btn-primary" onClick={() => setStep('result')} disabled={!hasAddress}>
             <QrCode size={15} /> Generate payment link
           </button>
         </div>
