@@ -79,16 +79,86 @@ src/
 - `/pay/:id` - Payment flow for specific transaction
 
 ## Flow
-`
-flowchart LR
-A[Client / Merchant] --> B[Route POST /payments]
-B --> C[Controller.createPayment]
-C --> D[Service.paymentService.createPayment]
-D --> E[Chain Adapter / Repository]
-E --> C
-C --> B
-B --> A[Response JSON]
-`
+
+```mermaid
+flowchart TB
+    subgraph src
+        direction TB
+
+        %% Entry points
+        server["server.ts"]
+        app["app.ts"]
+
+        %% Config
+        config["config/\n- env.ts"]
+
+        %% Routes
+        subgraph routes
+            merchantRoutes["routes/Merchant.js\n- POST /payments\n- GET /payments\n- GET /payments/:id"]
+            payerRoutes["routes/Payer.js\n- GET /pay/:id"]
+            webhookRoutes["routes/Webhook.js\n- POST /webhooks/payments"]
+            healthRoutes["routes/Health.js\n- GET /health"]
+        end
+
+        %% Controllers
+        subgraph controllers
+            paymentController["controllers/payment.controller.ts"]
+        end
+
+        %% Services
+        subgraph services
+            paymentService["services/payment.service.ts"]
+            feeService["services/fee.service.ts"]
+            walletService["services/wallet.service.ts"]
+            notificationService["services/notification.service.ts"]
+        end
+
+        %% Chain Layer
+        subgraph chain
+            chainInterface["chain/chainAdapter.interface.ts"]
+            chainFactory["chain/chain.factory.ts"]
+            subgraph adapters
+                ethereumAdapter["chain/adapters/ethereum.adapter.ts"]
+                baseAdapter["chain/adapters/base.adapter.ts"]
+            end
+        end
+
+        %% Repositories & DB
+        subgraph repositories
+            paymentRepository["repositories/payment.repository.ts"]
+        end
+        db["db/prisma.ts"]
+
+        %% Middlewares & Utils
+        middlewares["middlewares/\n- error.middleware.ts\n- validate.middleware.ts"]
+        utils["utils/logger.ts"]
+
+        %% Connections
+        server --> app
+        app --> merchantRoutes
+        app --> payerRoutes
+        app --> webhookRoutes
+        app --> healthRoutes
+
+        merchantRoutes --> paymentController
+        payerRoutes --> paymentController
+        webhookRoutes --> paymentController
+
+        paymentController --> paymentService
+        paymentService --> feeService
+        paymentService --> walletService
+        paymentService --> notificationService
+        paymentService --> chainFactory
+        paymentService --> paymentRepository
+
+        chainFactory --> chainInterface
+        chainFactory --> ethereumAdapter
+        chainFactory --> baseAdapter
+
+        paymentRepository --> db
+    end
+```
+
 
 ## License
 
