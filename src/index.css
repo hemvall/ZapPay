@@ -257,6 +257,7 @@ input, select { font: inherit; color: inherit; }
   display: flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 13px; background: var(--elevated);
 }
+.tog-icon img { width: 18px; height: 18px; }
 .tog.on .tog-icon { background: var(--accent-bg); }
 .tog-name { font-size: 12px; font-weight: 600; color: var(--text2); }
 .tog.on .tog-name { color: var(--text); }
