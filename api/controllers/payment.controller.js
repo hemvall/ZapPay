@@ -2,7 +2,7 @@ const paymentService = require('../services/payment.service');
 
 const createPayment = async (req, res, next) => {
   try {
-    const { amount, token, network, recipientAddress, label } = req.body;
+    const { amount, token, network, recipientAddress, label, merchantName } = req.body;
 
     const missing = [];
     if (!amount) missing.push('amount');
@@ -22,6 +22,7 @@ const createPayment = async (req, res, next) => {
       network,
       recipientAddress,
       label,
+      merchantName,
     });
     res.status(201).json(result);
   } catch (err) {

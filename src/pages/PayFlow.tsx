@@ -24,6 +24,31 @@ function BgElements() {
   )
 }
 
+const NETWORK_LOGOS: Record<string, string> = {
+  ethereum: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
+  base: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png'
+}
+
+function getNetworkLogo(network: string): string | null {
+  const key = network.toLowerCase().replace(/[\s-_]/g, '')
+  for (const [name, url] of Object.entries(NETWORK_LOGOS)) {
+    if (key.includes(name)) return url
+  }
+  return null
+}
+
+function NetworkBadge({ network }: { network: string }) {
+  const logo = getNetworkLogo(network)
+  if (!logo) return null
+  return (
+    <img
+      src={logo}
+      alt={network}
+      style={{ width: 18, height: 18, verticalAlign: 'middle', marginRight: 4, borderRadius: 4 }}
+    />
+  )
+}
+
 function Logo() {
   return (
     <div className="logo-center">
@@ -43,6 +68,7 @@ interface PaymentData {
   network: string
   recipientAddress: string
   label: string | null
+  merchantName: string | null
   status: string
   txHash: string | null
   payer: string | null
@@ -137,7 +163,10 @@ export default function PayFlow() {
               </div>
               <div className="sum-row">
                 <span className="sum-label">To</span>
-                <span className="sum-val mono text-s">{paymentData.recipientAddress}</span>
+                <span className="sum-val">{paymentData.merchantName
+                  ? <>{paymentData.merchantName} <span className="mono text-xs dim">({paymentData.recipientAddress.slice(0, 6)}...{paymentData.recipientAddress.slice(-4)})</span></>
+                  : <span className="mono text-s">{paymentData.recipientAddress}</span>
+                }</span>
               </div>
               <div className="sum-row">
                 <span className="sum-label">Network</span>
@@ -222,9 +251,12 @@ export default function PayFlow() {
               background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               fontWeight: 800, fontSize: 18, color: 'white', marginBottom: 10,
-            }}>P</div>
+            }}>{paymentData.merchantName ? paymentData.merchantName.charAt(0).toUpperCase() : 'P'}</div>
             <p className="text-xs dim">Paying to</p>
-            <p className="mono text-s muted">{paymentData.recipientAddress}</p>
+            {paymentData.merchantName
+              ? <p className="text-s" style={{ fontWeight: 600 }}>{paymentData.merchantName}</p>
+              : <p className="mono text-s muted">{paymentData.recipientAddress}</p>
+            }
           </div>
 
           <div className="pay-hero">
@@ -234,7 +266,10 @@ export default function PayFlow() {
                 ≈ {formatUsd(amount, ethPrice)}
               </p>
             )}
-            <p className="text-xs dim mt-6">on {paymentData.network}</p>
+            <p className="text-xs dim mt-4" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              on {paymentData.network}
+              <NetworkBadge network={paymentData.network} />
+            </p>
           </div>
 
           <div style={{ padding: '16px 0' }}>

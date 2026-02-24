@@ -13,6 +13,7 @@ model Payment {
   network          String
   recipientAddress String
   label            String?
+  merchantName     String?
   status           String   @default("CREATED")
   txHash           String?
   payer            String?

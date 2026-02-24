@@ -11,9 +11,9 @@ const NETWORK_FEES = {
   base: '0.02',
 };
 
-async function createPayment({ amount, token, network, recipientAddress, label }) {
+async function createPayment({ amount, token, network, recipientAddress, label, merchantName }) {
   const payment = await prisma.payment.create({
-    data: { amount, token, network, recipientAddress, label },
+    data: { amount, token, network, recipientAddress, label, merchantName },
   });
 
   const paymentUrl = `${FRONTEND_URL}/pay/${payment.id}`;
