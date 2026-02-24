@@ -1,19 +1,22 @@
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield } from 'lucide-react'
+import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield, Loader2 } from 'lucide-react'
 import type { Crypto, Network } from '../types'
-import { estimateFees, generateId, shortAddr } from '../data/mock'
+import { shortAddr } from '../data/mock'
+import { estimateFees } from '../hooks/estimateFees'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 
-const CRYPTOS: { id: Crypto; icon: string; color: string }[] = [
-  { id: 'USDC', icon: '$', color: '#2775ca' },
-  { id: 'USDT', icon: '₮', color: '#26a17b' },
-  { id: 'ETH', icon: 'Ξ', color: '#627eea' },
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
+
+const CRYPTOS: { id: Crypto; icon: string; logo: string; color: string }[] = [
+  { id: 'ETH', icon: 'Ξ', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', color: '#627eea' },
+  { id: 'USDC', icon: '$', logo: 'https://assets-cdn.trustwallet.com/blockchains/base/assets/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913/logo.png', color: '#2775ca' },
+  { id: 'USDT', icon: '₮', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fassets.phantom.app%2Fassets%2Fusdt.png&anim=true&fit=cover&width=60&height=60', color: '#26a17b' },
 ]
 
-const NETWORKS: { id: Network; label: string; sub: string }[] = [
-  { id: 'Base', label: 'Base', sub: 'Fast & cheap' },
-  { id: 'Ethereum', label: 'Ethereum', sub: 'Mainnet' },
+const NETWORKS: { id: Network; label: string; logo: string; sub: string }[] = [
+  { id: 'Base', label: 'Base', logo: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png', sub: 'Fast & cheap' },
+  { id: 'Ethereum', label: 'Ethereum', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', sub: 'Mainnet' },
 ]
 
 function BgElements() {
@@ -42,7 +45,11 @@ export default function Home() {
   const [crypto, setCrypto] = useState<Crypto>('USDC')
   const [network, setNetwork] = useState<Network>('Base')
   const [copied, setCopied] = useState(false)
-  const [paymentId] = useState(generateId())
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [paymentLink, setPaymentLink] = useState('')
+  const [apiFees, setApiFees] = useState('')
+  const [merchantName, setMerchantName] = useState('')
   const { ethPrice } = useEthPrice()
 
   const numAmount = parseFloat(amount) || 0
@@ -50,11 +57,54 @@ export default function Home() {
   const total = numAmount + fees
   const hasAddress = walletConnected || address.length >= 10
   const isValid = numAmount > 0 && hasAddress
-  const paymentLink = `${window.location.origin}/pay/${paymentId}`
 
-  const mockConnect = () => {
-    setWalletConnected(true)
-    setAddress('0x1a2b3c4d5e6f7890abcdef1234567890abcd9f3c')
+  const connectWallet = async () => {
+    try {
+      const anyWindow = window as any
+      if (anyWindow.ethereum && anyWindow.ethereum.request) {
+        const accounts: string[] = await anyWindow.ethereum.request({ method: 'eth_requestAccounts' })
+        const acc = accounts && accounts[0]
+        if (acc) {
+          setWalletConnected(true)
+          setAddress(acc)
+        }
+      } else {
+        // no injected wallet
+        alert('No Web3 wallet found. Please install MetaMask or paste an address manually.')
+      }
+    } catch (err) {
+      console.error('connectWallet error', err)
+    }
+  }
+
+  const handleGenerate = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_URL}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: String(numAmount),
+          token: crypto,
+          network: network.toLowerCase(),
+          recipientAddress: address,
+          merchantName: merchantName.trim() || undefined,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error || `Server error (${res.status})`)
+      }
+      const data = await res.json()
+      setPaymentLink(data.paymentUrl)
+      setApiFees(data.estimatedFees)
+      setStep('result')
+    } catch (err: any) {
+      setError(err.message || 'Failed to create payment')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleCopy = () => {
@@ -76,6 +126,10 @@ export default function Home() {
     setAmount('')
     setAddress('')
     setWalletConnected(false)
+    setPaymentLink('')
+    setApiFees('')
+    setMerchantName('')
+    setError('')
   }
 
   // ─── Result ───
@@ -111,7 +165,7 @@ export default function Home() {
               </div>
 
               <div className="result-right fade-up d2">
-                <div className="sum-row"><span className="sum-label">To</span><span className="sum-val mono text-xs">{shortAddr(address)}</span></div>
+                <div className="sum-row"><span className="sum-label">To</span><span className="sum-val">{merchantName.trim() || <span className="mono text-xs">{shortAddr(address)}</span>}</span></div>
                 <div className="sum-row">
                   <span className="sum-label">Amount</span>
                   <span className="sum-val">
@@ -122,7 +176,7 @@ export default function Home() {
                   </span>
                 </div>
                 <div className="sum-row"><span className="sum-label">Network</span><span className="sum-val">{network}</span></div>
-                <div className="sum-row"><span className="sum-label">Fees</span><span className="sum-val">{fees} {crypto}</span></div>
+                <div className="sum-row"><span className="sum-label">Fees</span><span className="sum-val">{apiFees || fees} {crypto}</span></div>
               </div>
             </div>
 
@@ -163,17 +217,29 @@ export default function Home() {
             <img src="/thunder.png" alt="" className="logo-img" />
           </div>
           <div className="brand-logo">Zap<span>Pay</span></div>
-          <div className="brand-sub"><Shield size={10} /> Receive crypto in 2 clicks</div>
         </div>
 
         {/* Form */}
         <div className="form-card fade-up">
+          <div className="brand-sub"><Shield size={10} /> Receive crypto in 2 clicks</div>
+
+          {/* Merchant name */}
+          <div className="field">
+            <div className="field-label">Your name / Business name</div>
+            <input
+              className="input"
+              placeholder="e.g. Acme Inc. (optional)"
+              value={merchantName}
+              onChange={(e) => setMerchantName(e.target.value)}
+            />
+          </div>
+
           {/* Wallet / Address */}
           <div className="field">
             <div className="field-label">Receive to</div>
             <button
               className={`btn-wallet ${walletConnected ? 'connected' : ''}`}
-              onClick={mockConnect}
+              onClick={connectWallet}
             >
               <Wallet size={15} />
               {walletConnected ? `Connected  ${shortAddr(address)}` : 'Connect Wallet'}
@@ -187,6 +253,34 @@ export default function Home() {
               disabled={walletConnected}
               style={walletConnected ? { opacity: 0.4 } : {}}
             />
+          </div>
+
+          {/* Token + Network */}
+          <div className="field-row">
+            <div className="field field-half">
+              <div className="field-label">Network</div>
+              <div className="toggles">
+                {NETWORKS.map((n) => (
+                  <button key={n.id} className={`tog ${network === n.id ? 'on' : ''}`} onClick={() => setNetwork(n.id)}>
+                    <div className="tog-icon"><img src={n.logo} alt={n.label} /></div>
+                    <span className="tog-name">{n.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="field field-half">
+              <div className="field-label">Token</div>
+              <div className="toggles">
+                {CRYPTOS.map((c) => (
+                  <button key={c.id} className={`tog ${crypto === c.id ? 'on' : ''}`} onClick={() => setCrypto(c.id)}>
+                    <div className="tog-icon" style={crypto === c.id ? { background: c.color + '22', color: c.color } : {}}>
+                      {c.logo ? <img src={c.logo} /> : c.icon}
+                    </div>
+                    <span className="tog-name">{c.id}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Amount */}
@@ -214,34 +308,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Token + Network */}
-          <div className="field-row">
-            <div className="field field-half">
-              <div className="field-label">Network</div>
-              <div className="toggles">
-                {NETWORKS.map((n) => (
-                  <button key={n.id} className={`tog ${network === n.id ? 'on' : ''}`} onClick={() => setNetwork(n.id)}>
-                    <div className="tog-icon">{n.id === 'Base' ? <Zap size={12} /> : 'Ξ'}</div>
-                    <span className="tog-name">{n.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="field field-half">
-              <div className="field-label">Token</div>
-              <div className="toggles">
-                {CRYPTOS.map((c) => (
-                  <button key={c.id} className={`tog ${crypto === c.id ? 'on' : ''}`} onClick={() => setCrypto(c.id)}>
-                    <div className="tog-icon" style={crypto === c.id ? { background: c.color + '22', color: c.color } : {}}>
-                      {c.icon}
-                    </div>
-                    <span className="tog-name">{c.id}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Summary */}
           {isValid && (
             <div className="summary fade-up">
@@ -261,8 +327,9 @@ export default function Home() {
           )}
 
           {/* CTA */}
-          <button className="btn-primary" onClick={() => setStep('result')} disabled={!hasAddress}>
-            <QrCode size={15} /> Generate payment link
+          {error && <p className="text-xs" style={{ color: '#ef4444', textAlign: 'center', marginBottom: 8 }}>{error}</p>}
+          <button className="btn-primary" onClick={handleGenerate} disabled={!isValid || loading}>
+            {loading ? <><Loader2 size={15} className="spin" /> Creating...</> : <><QrCode size={15} /> Generate payment link</>}
           </button>
         </div>
 
