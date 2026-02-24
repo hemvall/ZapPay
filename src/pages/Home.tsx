@@ -7,15 +7,15 @@ import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
 
-const CRYPTOS: { id: Crypto; icon: string; color: string }[] = [
-  { id: 'USDC', icon: '$', color: '#2775ca' },
-  { id: 'USDT', icon: '₮', color: '#26a17b' },
-  { id: 'ETH', icon: 'Ξ', color: '#627eea' },
+const CRYPTOS: { id: Crypto; icon: string; logo: string; color: string }[] = [
+  { id: 'ETH', icon: 'Ξ', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', color: '#627eea' },
+  { id: 'USDC', icon: '$', logo: 'https://assets-cdn.trustwallet.com/blockchains/base/assets/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913/logo.png', color: '#2775ca' },
+  { id: 'USDT', icon: '₮', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fassets.phantom.app%2Fassets%2Fusdt.png&anim=true&fit=cover&width=60&height=60', color: '#26a17b' },
 ]
 
-const NETWORKS: { id: Network; label: string; sub: string }[] = [
-  { id: 'Base', label: 'Base', sub: 'Fast & cheap' },
-  { id: 'Ethereum', label: 'Ethereum', sub: 'Mainnet' },
+const NETWORKS: { id: Network; label: string; logo: string; sub: string }[] = [
+  { id: 'Base', label: 'Base', logo: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png', sub: 'Fast & cheap' },
+  { id: 'Ethereum', label: 'Ethereum', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', sub: 'Mainnet' },
 ]
 
 function BgElements() {
@@ -213,11 +213,12 @@ export default function Home() {
             <img src="/thunder.png" alt="" className="logo-img" />
           </div>
           <div className="brand-logo">Zap<span>Pay</span></div>
-          <div className="brand-sub"><Shield size={10} /> Receive crypto in 2 clicks</div>
         </div>
 
         {/* Form */}
         <div className="form-card fade-up">
+          <div className="brand-sub"><Shield size={10} /> Receive crypto in 2 clicks</div>
+
           {/* Wallet / Address */}
           <div className="field">
             <div className="field-label">Receive to</div>
@@ -237,6 +238,34 @@ export default function Home() {
               disabled={walletConnected}
               style={walletConnected ? { opacity: 0.4 } : {}}
             />
+          </div>
+
+          {/* Token + Network */}
+          <div className="field-row">
+            <div className="field field-half">
+              <div className="field-label">Network</div>
+              <div className="toggles">
+                {NETWORKS.map((n) => (
+                  <button key={n.id} className={`tog ${network === n.id ? 'on' : ''}`} onClick={() => setNetwork(n.id)}>
+                    <div className="tog-icon"><img src={n.logo} alt={n.label} /></div>
+                    <span className="tog-name">{n.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="field field-half">
+              <div className="field-label">Token</div>
+              <div className="toggles">
+                {CRYPTOS.map((c) => (
+                  <button key={c.id} className={`tog ${crypto === c.id ? 'on' : ''}`} onClick={() => setCrypto(c.id)}>
+                    <div className="tog-icon" style={crypto === c.id ? { background: c.color + '22', color: c.color } : {}}>
+                      {c.logo ? <img src={c.logo} /> : c.icon}
+                    </div>
+                    <span className="tog-name">{c.id}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Amount */}
@@ -261,34 +290,6 @@ export default function Home() {
                 className="amount-btn"
                 onClick={() => setAmount(String(numAmount + 1))}
               >+</button>
-            </div>
-          </div>
-
-          {/* Token + Network */}
-          <div className="field-row">
-            <div className="field field-half">
-              <div className="field-label">Network</div>
-              <div className="toggles">
-                {NETWORKS.map((n) => (
-                  <button key={n.id} className={`tog ${network === n.id ? 'on' : ''}`} onClick={() => setNetwork(n.id)}>
-                    <div className="tog-icon">{n.id === 'Base' ? <Zap size={12} /> : 'Ξ'}</div>
-                    <span className="tog-name">{n.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="field field-half">
-              <div className="field-label">Token</div>
-              <div className="toggles">
-                {CRYPTOS.map((c) => (
-                  <button key={c.id} className={`tog ${crypto === c.id ? 'on' : ''}`} onClick={() => setCrypto(c.id)}>
-                    <div className="tog-icon" style={crypto === c.id ? { background: c.color + '22', color: c.color } : {}}>
-                      {c.icon}
-                    </div>
-                    <span className="tog-name">{c.id}</span>
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
