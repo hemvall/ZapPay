@@ -49,6 +49,7 @@ export default function Home() {
   const [error, setError] = useState('')
   const [paymentLink, setPaymentLink] = useState('')
   const [apiFees, setApiFees] = useState('')
+  const [merchantName, setMerchantName] = useState('')
   const { ethPrice } = useEthPrice()
 
   const numAmount = parseFloat(amount) || 0
@@ -88,6 +89,7 @@ export default function Home() {
           token: crypto,
           network: network.toLowerCase(),
           recipientAddress: address,
+          merchantName: merchantName.trim() || undefined,
         }),
       })
       if (!res.ok) {
@@ -126,6 +128,7 @@ export default function Home() {
     setWalletConnected(false)
     setPaymentLink('')
     setApiFees('')
+    setMerchantName('')
     setError('')
   }
 
@@ -162,7 +165,7 @@ export default function Home() {
               </div>
 
               <div className="result-right fade-up d2">
-                <div className="sum-row"><span className="sum-label">To</span><span className="sum-val mono text-xs">{shortAddr(address)}</span></div>
+                <div className="sum-row"><span className="sum-label">To</span><span className="sum-val">{merchantName.trim() || <span className="mono text-xs">{shortAddr(address)}</span>}</span></div>
                 <div className="sum-row">
                   <span className="sum-label">Amount</span>
                   <span className="sum-val">
@@ -219,6 +222,17 @@ export default function Home() {
         {/* Form */}
         <div className="form-card fade-up">
           <div className="brand-sub"><Shield size={10} /> Receive crypto in 2 clicks</div>
+
+          {/* Merchant name */}
+          <div className="field">
+            <div className="field-label">Your name / Business name</div>
+            <input
+              className="input"
+              placeholder="e.g. Acme Inc. (optional)"
+              value={merchantName}
+              onChange={(e) => setMerchantName(e.target.value)}
+            />
+          </div>
 
           {/* Wallet / Address */}
           <div className="field">
