@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Payment {
+  id               String   @id @default(uuid())
+  amount           Decimal  @db.Decimal(36, 18)
+  token            String
+  network          String
+  recipientAddress String
+  label            String?
+  merchantName     String?
+  status           String   @default("CREATED")
+  txHash           String?
+  payer            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([status])
+  @@index([recipientAddress])
+}
