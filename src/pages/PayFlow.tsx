@@ -1,18 +1,112 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Check, Shield, ArrowRight, ExternalLink } from 'lucide-react'
+import { Check, Shield, ArrowRight, ExternalLink, Loader2 } from 'lucide-react'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
+import { estimateFees } from '../hooks/estimateFees'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
+
+function BgElements() {
+  return (
+    <>
+      <div className="orb orb-1" />
+      <div className="orb orb-2" />
+      <div className="orb orb-3" />
+      <div className="orb orb-4" />
+      <div className="orb orb-5" />
+      <div className="ring-deco ring-deco-1" />
+      <div className="ring-deco ring-deco-2" />
+      <div className="particle-line pl-1" />
+      <div className="particle-line pl-2" />
+      <div className="particle-line pl-3" />
+      <div className="particle-line pl-4" />
+    </>
+  )
+}
+
+function Logo() {
+  return (
+    <div className="logo-center">
+      <div className="logo-wrap">
+        <div className="logo-glow" />
+        <img src="/thunder.png" alt="" className="logo-img" />
+      </div>
+      <div className="brand-logo">Zap<span>Pay</span></div>
+    </div>
+  )
+}
+
+interface PaymentData {
+  id: string
+  amount: string
+  token: string
+  network: string
+  recipientAddress: string
+  label: string | null
+  status: string
+  txHash: string | null
+  payer: string | null
+}
 
 export default function PayFlow() {
   const { id } = useParams()
   const [step, setStep] = useState<'summary' | 'processing' | 'done'>('summary')
+  const [paymentData, setPaymentData] = useState<PaymentData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const { ethPrice } = useEthPrice()
 
-  // Mock — in production fetched from backend by id
-  const payment = { id, amount: 50, crypto: 'USDC', network: 'Base', recipient: '0x1a2b...9f3c', fees: 0.10 }
-  const total = payment.amount + payment.fees
-  const isEth = payment.crypto === 'ETH'
+  useEffect(() => {
+    if (!id) return
+    setLoading(true)
+    fetch(`${API_URL}/payments/${id}`)
+      .then(res => {
+        if (!res.ok) throw new Error(res.status === 404 ? 'Payment not found' : 'Failed to fetch payment')
+        return res.json()
+      })
+      .then(data => {
+        setPaymentData(data)
+        setError(null)
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="hero">
+        <BgElements />
+        <div className="hero-content">
+          <Logo />
+          <div className="form-card fade-up text-c" style={{ padding: '48px 28px' }}>
+            <Loader2 size={32} className="spin" style={{ color: 'var(--accent)', marginBottom: 12 }} />
+            <p className="text-s muted">Loading payment...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !paymentData) {
+    return (
+      <div className="hero">
+        <BgElements />
+        <div className="hero-content">
+          <Logo />
+          <div className="form-card fade-up text-c" style={{ padding: '48px 28px' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Payment not found</h2>
+            <p className="text-s muted">{error || 'This payment link is invalid or has expired.'}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const amount = parseFloat(paymentData.amount)
+  const fees = estimateFees(amount, paymentData.token, paymentData.network)
+  const total = amount + fees
+  const isEth = paymentData.token === 'ETH'
 
   const handlePay = () => {
     setStep('processing')
@@ -22,19 +116,18 @@ export default function PayFlow() {
   // ─── Done ───
   if (step === 'done') {
     return (
-      <div className="page">
-        <div className="wrap">
-          <div className="brand">
-            <div className="brand-logo">Zap<span>Pay</span></div>
-          </div>
-          <div className="card fade-up text-c">
+      <div className="hero">
+        <BgElements />
+        <div className="hero-content">
+          <Logo />
+          <div className="form-card fade-up text-c">
             <div className="success-circle">
               <Check size={30} style={{ color: 'var(--success)' }} />
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Payment confirmed</h2>
             <p className="text-s muted mb-24">
-              {payment.amount} {payment.crypto} sent successfully
-              {isEth && ethPrice && <> ({formatUsd(payment.amount, ethPrice)})</>}
+              {amount} {paymentData.token} sent successfully
+              {isEth && ethPrice && <> ({formatUsd(amount, ethPrice)})</>}
             </p>
 
             <div style={{ textAlign: 'left' }}>
@@ -44,21 +137,21 @@ export default function PayFlow() {
               </div>
               <div className="sum-row">
                 <span className="sum-label">To</span>
-                <span className="sum-val mono text-s">{payment.recipient}</span>
+                <span className="sum-val mono text-s">{paymentData.recipientAddress}</span>
               </div>
               <div className="sum-row">
                 <span className="sum-label">Network</span>
-                <span className="sum-val">{payment.network}</span>
+                <span className="sum-val">{paymentData.network}</span>
               </div>
               <div className="sum-row">
                 <span className="sum-label">Fees</span>
-                <span className="sum-val">{payment.fees} {payment.crypto}</span>
+                <span className="sum-val">{fees} {paymentData.token}</span>
               </div>
               <hr className="sum-div" />
               <div className="sum-row sum-total">
                 <span className="sum-label">Total paid</span>
                 <span className="sum-val">
-                  {total.toFixed(2)} {payment.crypto}
+                  {total.toFixed(2)} {paymentData.token}
                   {isEth && ethPrice && (
                     <span className="usd-conv"> ≈ {formatUsd(total, ethPrice)}</span>
                   )}
@@ -79,15 +172,14 @@ export default function PayFlow() {
   // ─── Processing ───
   if (step === 'processing') {
     return (
-      <div className="page">
-        <div className="wrap">
-          <div className="brand">
-            <div className="brand-logo">Zap<span>Pay</span></div>
-          </div>
-          <div className="card fade-up text-c" style={{ padding: '48px 28px' }}>
+      <div className="hero">
+        <BgElements />
+        <div className="hero-content">
+          <Logo />
+          <div className="form-card fade-up text-c" style={{ padding: '48px 28px' }}>
             <div className="ring-spinner" />
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Processing transaction</h2>
-            <p className="text-s muted">Confirming on {payment.network}...</p>
+            <p className="text-s muted">Confirming on {paymentData.network}...</p>
 
             <div className="step-list">
               {[
@@ -116,14 +208,14 @@ export default function PayFlow() {
 
   // ─── Summary ───
   return (
-    <div className="page">
-      <div className="wrap">
-        <div className="brand">
-          <div className="brand-logo">Zap<span>Pay</span></div>
-          <div className="brand-sub"><Shield size={12} /> Secure payment</div>
-        </div>
+    <div className="hero">
+      <BgElements />
+      <div className="hero-content">
+        <Logo />
 
-        <div className="card fade-up">
+        <div className="form-card fade-up">
+          <div className="brand-sub"><Shield size={10} /> Secure payment</div>
+
           <div className="text-c mb-16">
             <div style={{
               width: 44, height: 44, borderRadius: 10,
@@ -132,33 +224,33 @@ export default function PayFlow() {
               fontWeight: 800, fontSize: 18, color: 'white', marginBottom: 10,
             }}>P</div>
             <p className="text-xs dim">Paying to</p>
-            <p className="mono text-s muted">{payment.recipient}</p>
+            <p className="mono text-s muted">{paymentData.recipientAddress}</p>
           </div>
 
           <div className="pay-hero">
-            <div className="pay-amount">{payment.amount} {payment.crypto}</div>
+            <div className="pay-amount">{amount} {paymentData.token}</div>
             {isEth && ethPrice && (
               <p className="text-s muted" style={{ marginTop: 4 }}>
-                ≈ {formatUsd(payment.amount, ethPrice)}
+                ≈ {formatUsd(amount, ethPrice)}
               </p>
             )}
-            <p className="text-xs dim mt-6">on {payment.network}</p>
+            <p className="text-xs dim mt-6">on {paymentData.network}</p>
           </div>
 
           <div style={{ padding: '16px 0' }}>
             <div className="sum-row">
               <span className="sum-label">Amount</span>
-              <span className="sum-val">{payment.amount} {payment.crypto}</span>
+              <span className="sum-val">{amount} {paymentData.token}</span>
             </div>
             <div className="sum-row">
               <span className="sum-label">Network fee</span>
-              <span className="sum-val">{payment.fees} {payment.crypto}</span>
+              <span className="sum-val">{fees} {paymentData.token}</span>
             </div>
             <hr className="sum-div" />
             <div className="sum-row sum-total">
               <span className="sum-label">Total</span>
               <span className="sum-val">
-                {total.toFixed(2)} {payment.crypto}
+                {total.toFixed(2)} {paymentData.token}
                 {isEth && ethPrice && (
                   <span className="usd-conv"> ≈ {formatUsd(total, ethPrice)}</span>
                 )}
@@ -167,7 +259,7 @@ export default function PayFlow() {
           </div>
 
           <button className="btn-primary mt-8" onClick={handlePay}>
-            Pay {total.toFixed(2)} {payment.crypto}
+            Pay {total.toFixed(2)} {paymentData.token}
             {isEth && ethPrice && <span className="text-xs" style={{ opacity: 0.7, marginLeft: 4 }}>({formatUsd(total, ethPrice)})</span>}
             {' '}<ArrowRight size={15} />
           </button>
