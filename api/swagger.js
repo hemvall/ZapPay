@@ -122,7 +122,7 @@ module.exports = {
                 }
             }
         },
-        '/pay/{id}': {
+        '/payments/{id}': {
             get: {
                 summary: 'Get payment details for payer',
                 tags: ['Payer'],
