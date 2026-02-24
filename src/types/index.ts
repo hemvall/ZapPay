@@ -1,2 +1,2 @@
 export type Crypto = 'USDC' | 'USDT' | 'ETH'
-export type Network = 'Ethereum' | 'Base'
+export type Network = 'Ethereum' | 'Base' | 'Sepolia'

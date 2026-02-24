@@ -59,9 +59,25 @@ const getPaymentForPayer = async (req, res, next) => {
   }
 };
 
+const submitTransaction = async (req, res, next) => {
+  try {
+    const { txHash, payer } = req.body;
+
+    if (!txHash) return res.status(400).json({ error: 'Missing required field: txHash' });
+    if (!payer) return res.status(400).json({ error: 'Missing required field: payer' });
+
+    const result = await paymentService.submitTransaction(req.params.id, txHash, payer);
+    res.json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    next(err);
+  }
+};
+
 module.exports = {
   createPayment,
   listPayments,
   getPayment,
   getPaymentForPayer,
+  submitTransaction,
 };

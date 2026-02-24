@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield, Loader2 } from 'lucide-react'
+import { Copy, Check, QrCode, Share2, ArrowLeft, Shield, Loader2 } from 'lucide-react'
 import type { Crypto, Network } from '../types'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
+import { useAccount, useDisconnect } from 'wagmi'
+import WalletPicker from '../components/WalletPicker'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
 
@@ -15,6 +17,7 @@ const CRYPTOS: { id: Crypto; icon: string; logo: string; color: string }[] = [
 ]
 
 const NETWORKS: { id: Network; label: string; logo: string; sub: string }[] = [
+  { id: 'Sepolia', label: 'Sepolia', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', sub: 'Testnet' },
   { id: 'Base', label: 'Base', logo: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png', sub: 'Fast & cheap' },
   { id: 'Ethereum', label: 'Ethereum', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', sub: 'Mainnet' },
 ]
@@ -39,11 +42,10 @@ function BgElements() {
 
 export default function Home() {
   const [step, setStep] = useState<'form' | 'result'>('form')
-  const [address, setAddress] = useState('')
-  const [walletConnected, setWalletConnected] = useState(false)
+  const [manualAddress, setManualAddress] = useState('')
   const [amount, setAmount] = useState('')
   const [crypto, setCrypto] = useState<Crypto>('USDC')
-  const [network, setNetwork] = useState<Network>('Base')
+  const [network, setNetwork] = useState<Network>('Sepolia')
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -52,30 +54,17 @@ export default function Home() {
   const [merchantName, setMerchantName] = useState('')
   const { ethPrice } = useEthPrice()
 
+  // wagmi wallet state
+  const { address: walletAddress, isConnected: walletConnected } = useAccount()
+  const { disconnect } = useDisconnect()
+
+  const address = walletConnected ? (walletAddress || '') : manualAddress
+
   const numAmount = parseFloat(amount) || 0
   const fees = numAmount > 0 ? estimateFees(numAmount, crypto, network) : 0
   const total = numAmount + fees
-  const hasAddress = walletConnected || address.length >= 10
+  const hasAddress = walletConnected || manualAddress.length >= 10
   const isValid = numAmount > 0 && hasAddress
-
-  const connectWallet = async () => {
-    try {
-      const anyWindow = window as any
-      if (anyWindow.ethereum && anyWindow.ethereum.request) {
-        const accounts: string[] = await anyWindow.ethereum.request({ method: 'eth_requestAccounts' })
-        const acc = accounts && accounts[0]
-        if (acc) {
-          setWalletConnected(true)
-          setAddress(acc)
-        }
-      } else {
-        // no injected wallet
-        alert('No Web3 wallet found. Please install MetaMask or paste an address manually.')
-      }
-    } catch (err) {
-      console.error('connectWallet error', err)
-    }
-  }
 
   const handleGenerate = async () => {
     setLoading(true)
@@ -124,8 +113,8 @@ export default function Home() {
   const reset = () => {
     setStep('form')
     setAmount('')
-    setAddress('')
-    setWalletConnected(false)
+    setManualAddress('')
+    if (walletConnected) disconnect()
     setPaymentLink('')
     setApiFees('')
     setMerchantName('')
@@ -237,19 +226,13 @@ export default function Home() {
           {/* Wallet / Address */}
           <div className="field">
             <div className="field-label">Receive to</div>
-            <button
-              className={`btn-wallet ${walletConnected ? 'connected' : ''}`}
-              onClick={connectWallet}
-            >
-              <Wallet size={15} />
-              {walletConnected ? `Connected  ${shortAddr(address)}` : 'Connect Wallet'}
-            </button>
+            <WalletPicker />
             <div className="field-or">or</div>
             <input
               className="input mono"
               placeholder="0x... paste address"
-              value={walletConnected ? address : address}
-              onChange={(e) => { setAddress(e.target.value); setWalletConnected(false) }}
+              value={walletConnected ? (walletAddress || '') : manualAddress}
+              onChange={(e) => { setManualAddress(e.target.value); if (walletConnected) disconnect() }}
               disabled={walletConnected}
               style={walletConnected ? { opacity: 0.4 } : {}}
             />
