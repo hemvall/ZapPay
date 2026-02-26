@@ -15,7 +15,7 @@ model Payment {
   label            String?
   merchantName     String?
   status           String   @default("CREATED")
-  txHash           String?
+  txHash           String?  @unique
   payer            String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

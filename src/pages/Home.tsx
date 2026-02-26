@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield, Loader2 } from 'lucide-react'
 import type { Crypto, Network } from '../types'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
+import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { injected } from 'wagmi/connectors'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
 
@@ -39,8 +41,7 @@ function BgElements() {
 
 export default function Home() {
   const [step, setStep] = useState<'form' | 'result'>('form')
-  const [address, setAddress] = useState('')
-  const [walletConnected, setWalletConnected] = useState(false)
+  const [manualAddress, setManualAddress] = useState('')
   const [amount, setAmount] = useState('')
   const [crypto, setCrypto] = useState<Crypto>('USDC')
   const [network, setNetwork] = useState<Network>('Base')
@@ -52,29 +53,21 @@ export default function Home() {
   const [merchantName, setMerchantName] = useState('')
   const { ethPrice } = useEthPrice()
 
+  // wagmi wallet state
+  const { address: walletAddress, isConnected: walletConnected } = useAccount()
+  const { connect } = useConnect()
+  const { disconnect } = useDisconnect()
+
+  const address = walletConnected ? (walletAddress || '') : manualAddress
+
   const numAmount = parseFloat(amount) || 0
   const fees = numAmount > 0 ? estimateFees(numAmount, crypto, network) : 0
   const total = numAmount + fees
-  const hasAddress = walletConnected || address.length >= 10
+  const hasAddress = walletConnected || manualAddress.length >= 10
   const isValid = numAmount > 0 && hasAddress
 
-  const connectWallet = async () => {
-    try {
-      const anyWindow = window as any
-      if (anyWindow.ethereum && anyWindow.ethereum.request) {
-        const accounts: string[] = await anyWindow.ethereum.request({ method: 'eth_requestAccounts' })
-        const acc = accounts && accounts[0]
-        if (acc) {
-          setWalletConnected(true)
-          setAddress(acc)
-        }
-      } else {
-        // no injected wallet
-        alert('No Web3 wallet found. Please install MetaMask or paste an address manually.')
-      }
-    } catch (err) {
-      console.error('connectWallet error', err)
-    }
+  const connectWallet = () => {
+    connect({ connector: injected() })
   }
 
   const handleGenerate = async () => {
@@ -124,8 +117,8 @@ export default function Home() {
   const reset = () => {
     setStep('form')
     setAmount('')
-    setAddress('')
-    setWalletConnected(false)
+    setManualAddress('')
+    if (walletConnected) disconnect()
     setPaymentLink('')
     setApiFees('')
     setMerchantName('')
@@ -248,8 +241,8 @@ export default function Home() {
             <input
               className="input mono"
               placeholder="0x... paste address"
-              value={walletConnected ? address : address}
-              onChange={(e) => { setAddress(e.target.value); setWalletConnected(false) }}
+              value={walletConnected ? (walletAddress || '') : manualAddress}
+              onChange={(e) => { setManualAddress(e.target.value); if (walletConnected) disconnect() }}
               disabled={walletConnected}
               style={walletConnected ? { opacity: 0.4 } : {}}
             />
