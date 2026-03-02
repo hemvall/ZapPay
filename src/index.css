@@ -82,7 +82,8 @@ input, select { font: inherit; color: inherit; }
 }
 
 .logo-img {
-  height: 135px;
+  height: 115px;
+  margin-top: 25px;
   width: auto;
   mix-blend-mode: screen;
   position: relative;
