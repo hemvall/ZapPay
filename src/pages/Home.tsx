@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield, Loader2 } from 'lucide-react'
+import { Copy, Check, QrCode, Share2, ArrowLeft, Shield, Loader2 } from 'lucide-react'
 import type { Crypto, Network } from '../types'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { injected } from 'wagmi/connectors'
+import { useAccount, useDisconnect } from 'wagmi'
+import WalletPicker from '../components/WalletPicker'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
 
@@ -55,7 +55,6 @@ export default function Home() {
 
   // wagmi wallet state
   const { address: walletAddress, isConnected: walletConnected } = useAccount()
-  const { connect } = useConnect()
   const { disconnect } = useDisconnect()
 
   const address = walletConnected ? (walletAddress || '') : manualAddress
@@ -65,10 +64,6 @@ export default function Home() {
   const total = numAmount + fees
   const hasAddress = walletConnected || manualAddress.length >= 10
   const isValid = numAmount > 0 && hasAddress
-
-  const connectWallet = () => {
-    connect({ connector: injected() })
-  }
 
   const handleGenerate = async () => {
     setLoading(true)
@@ -230,13 +225,7 @@ export default function Home() {
           {/* Wallet / Address */}
           <div className="field">
             <div className="field-label">Receive to</div>
-            <button
-              className={`btn-wallet ${walletConnected ? 'connected' : ''}`}
-              onClick={connectWallet}
-            >
-              <Wallet size={15} />
-              {walletConnected ? `Connected  ${shortAddr(address)}` : 'Connect Wallet'}
-            </button>
+            <WalletPicker />
             <div className="field-or">or</div>
             <input
               className="input mono"

@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Check, Shield, ArrowRight, ExternalLink, Loader2, Wallet } from 'lucide-react'
+import { Check, Shield, ArrowRight, ExternalLink, Loader2 } from 'lucide-react'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 import { estimateFees } from '../hooks/estimateFees'
 import {
   useAccount,
-  useConnect,
   useSendTransaction,
   useWriteContract,
   useWaitForTransactionReceipt,
   useSwitchChain,
 } from 'wagmi'
 import { parseEther, parseUnits, erc20Abi, type Hex } from 'viem'
-import { injected } from 'wagmi/connectors'
+import WalletPicker from '../components/WalletPicker'
 import { TOKEN_ADDRESSES, TOKEN_DECIMALS, NETWORK_CHAIN_IDS, ZAPPAY_TREASURY } from '../lib/tokens'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
@@ -104,7 +103,6 @@ export default function PayFlow() {
 
   // wagmi hooks
   const { address, isConnected, chainId } = useAccount()
-  const { connect } = useConnect()
   const { switchChain } = useSwitchChain()
 
   // Native ETH transfer
@@ -223,15 +221,10 @@ export default function PayFlow() {
   const targetChainId = NETWORK_CHAIN_IDS[paymentData.network.toLowerCase()]
   const needsChainSwitch = isConnected && chainId !== targetChainId
 
-  const handleConnect = () => {
-    connect({ connector: injected() })
-  }
-
   const handlePay = async () => {
     setTxError(null)
 
     if (!isConnected) {
-      handleConnect()
       return
     }
 
@@ -473,9 +466,9 @@ export default function PayFlow() {
               <p className="text-s" style={{ color: '#ef4444', fontWeight: 600 }}>This payment has expired</p>
             </div>
           ) : !isConnected ? (
-            <button className="btn-primary mt-8" onClick={handleConnect}>
-              <Wallet size={15} /> Connect Wallet
-            </button>
+            <div className="mt-8">
+              <WalletPicker compact />
+            </div>
           ) : needsChainSwitch ? (
             <button className="btn-primary mt-8" onClick={() => switchChain({ chainId: targetChainId })}>
               Switch to {paymentData.network}
@@ -490,9 +483,9 @@ export default function PayFlow() {
           )}
 
           {isConnected && (
-            <p className="text-xs dim text-c mt-8">
-              Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
-            </p>
+            <div className="mt-8">
+              <WalletPicker />
+            </div>
           )}
 
           <p className="text-xs dim text-c mt-16">
