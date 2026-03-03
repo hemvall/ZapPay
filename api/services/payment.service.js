@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma');
 const { getChainAdapter } = require('../chain/chain.factory');
 const { computePlatformFee } = require('../chain/fees');
+const { emitPaymentUpdate } = require('../lib/paymentEvents');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const PAYMENT_TTL_MINUTES = Number(process.env.PAYMENT_TTL_MINUTES || 30);
@@ -34,10 +35,25 @@ async function listPayments() {
   return prisma.payment.findMany({ orderBy: { createdAt: 'desc' } });
 }
 
+async function getPaymentsByAddress(address, { status } = {}) {
+  const where = {
+    OR: [
+      { recipientAddress: address },
+      { payer: address },
+    ],
+  };
+  if (status) {
+    where.status = status;
+  }
+  return prisma.payment.findMany({ where, orderBy: { createdAt: 'desc' } });
+}
+
 async function updatePayment(id, patch) {
   const existing = await prisma.payment.findUnique({ where: { id } });
   if (!existing) return null;
-  return prisma.payment.update({ where: { id }, data: patch });
+  const updated = await prisma.payment.update({ where: { id }, data: patch });
+  emitPaymentUpdate(updated);
+  return updated;
 }
 
 /**
@@ -108,6 +124,7 @@ module.exports = {
   getPayment,
   getPaymentForPayer,
   listPayments,
+  getPaymentsByAddress,
   updatePayment,
   submitTransaction,
   expireStalePayments,
