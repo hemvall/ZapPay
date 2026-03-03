@@ -17,8 +17,20 @@
 
 
 /// TODO : AutoUpdate fee when changing amount or crypto, and show breakdown of fee calculation (e.g. "0.5% of $600 = $3.00")
+const TESTNETS = ['sepolia', 'goerli', 'mumbai', 'fuji']
+
+function isTestnet(network: string): boolean {
+	return TESTNETS.includes(network.trim().toLowerCase())
+}
+
 export function estimateFees(amount: number, crypto: string, network: string): number {
 	const a = Math.max(0, amount)
+
+	// Symbolic flat fee on testnets (0.0001 ETH / token)
+	if (isTestnet(network)) {
+		return 0.0001
+	}
+
 	const isEth = typeof crypto === 'string' && crypto.trim().toLowerCase() === 'eth'
 
 	// small absolute fees (USD)
