@@ -102,6 +102,38 @@ module.exports = {
                 }
             }
         },
+        '/payments/address/{address}': {
+            get: {
+                summary: 'Get payments by wallet address',
+                tags: ['Merchant'],
+                description: 'Returns all payments where the given address is either the recipient or the payer.',
+                parameters: [
+                    { name: 'address', in: 'path', required: true, schema: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$' }, description: 'Ethereum wallet address' },
+                    { name: 'status', in: 'query', required: false, schema: { type: 'string', enum: ['CREATED', 'PENDING', 'CONFIRMED', 'FAILED'] }, description: 'Filter by payment status' }
+                ],
+                responses: {
+                    '200': {
+                        description: 'Array of payment objects for this address',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'array',
+                                    items: { $ref: '#/components/schemas/Payment' }
+                                }
+                            }
+                        }
+                    },
+                    '400': {
+                        description: 'Invalid address format',
+                        content: {
+                            'application/json': {
+                                schema: { type: 'object', properties: { error: { type: 'string' } } }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         '/payments/{id}': {
             get: {
                 summary: 'Get payment by ID',
