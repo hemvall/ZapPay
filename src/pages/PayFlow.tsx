@@ -105,6 +105,16 @@ export default function PayFlow() {
 
   const { ethPrice } = useEthPrice()
 
+  const handleExpired = () => {
+    fetch(`${API_URL}/payments/${id}`)
+      .then(r => r.json())
+      .then(d => {
+        setPaymentData(d)
+        if (d.status === 'EXPIRED') setStep('summary')
+      })
+      .catch(() => {})
+  }
+
   // wagmi hooks
   const { address, isConnected, chainId } = useAccount()
   const { switchChain } = useSwitchChain()
@@ -376,6 +386,11 @@ export default function PayFlow() {
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Processing transaction</h2>
             <p className="text-s muted">Confirming on {paymentData.network}...</p>
 
+            <ExpirationCountdown
+              expiresAt={paymentData.expiresAt}
+              onExpired={handleExpired}
+            />
+
             <div className="step-list">
               {[
                 { label: 'Wallet approval', done: !isSending },
@@ -446,12 +461,7 @@ export default function PayFlow() {
 
           <ExpirationCountdown
             expiresAt={paymentData.expiresAt}
-            onExpired={() => {
-              fetch(`${API_URL}/payments/${id}`)
-                .then(r => r.json())
-                .then(d => setPaymentData(d))
-                .catch(() => {})
-            }}
+            onExpired={handleExpired}
           />
 
           <div style={{ padding: '16px 0' }}>
