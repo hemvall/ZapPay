@@ -40,6 +40,19 @@ async function listPayments() {
   return prisma.payment.findMany({ orderBy: { createdAt: 'desc' } });
 }
 
+async function getPaymentsByAddress(address, { status } = {}) {
+  const where = {
+    OR: [
+      { recipientAddress: address },
+      { payer: address },
+    ],
+  };
+  if (status) {
+    where.status = status;
+  }
+  return prisma.payment.findMany({ where, orderBy: { createdAt: 'desc' } });
+}
+
 async function updatePayment(id, patch) {
   const existing = await prisma.payment.findUnique({ where: { id } });
   if (!existing) return null;
@@ -51,5 +64,6 @@ module.exports = {
   getPayment,
   getPaymentForPayer,
   listPayments,
+  getPaymentsByAddress,
   updatePayment,
 };
