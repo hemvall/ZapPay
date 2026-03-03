@@ -2,8 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(cd:*)",
-      "Bash(npx tsc:*)",
-      "Bash(xargs grep:*)"
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

@@ -60,6 +60,17 @@ const getPaymentForPayer = async (req, res, next) => {
   }
 };
 
+const submitTransaction = async (req, res, next) => {
+  try {
+    const { txHash, payer } = req.body;
+
+    if (!txHash) return res.status(400).json({ error: 'Missing required field: txHash' });
+    if (!payer) return res.status(400).json({ error: 'Missing required field: payer' });
+
+    const result = await paymentService.submitTransaction(req.params.id, txHash, payer);
+    res.json(result);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
 const getPaymentsByAddress = async (req, res, next) => {
   try {
     const { address } = req.params;
@@ -95,42 +106,13 @@ const updatePayment = async (req, res, next) => {
   }
 };
 
-const streamPaymentsByAddress = (req, res) => {
-  const { address } = req.params;
-  if (!address || !address.startsWith('0x') || address.length !== 42) {
-    return res.status(400).json({ error: 'Invalid Ethereum address' });
-  }
-
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    Connection: 'keep-alive',
-  });
-  res.flushHeaders();
-
-  const onPaymentUpdate = (payment) => {
-    const addr = address.toLowerCase();
-    if (
-      payment.recipientAddress?.toLowerCase() === addr ||
-      payment.payer?.toLowerCase() === addr
-    ) {
-      res.write(`event: payment.status\ndata: ${JSON.stringify(payment)}\n\n`);
-    }
-  };
-
-  paymentEmitter.on('payment.updated', onPaymentUpdate);
-
-  req.on('close', () => {
-    paymentEmitter.off('payment.updated', onPaymentUpdate);
-  });
-};
-
 module.exports = {
   createPayment,
   listPayments,
   getPayment,
   updatePayment,
   getPaymentForPayer,
+  submitTransaction,
   getPaymentsByAddress,
   streamPaymentsByAddress,
 };
