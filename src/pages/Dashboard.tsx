@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Wallet, Loader2, Download, ExternalLink, Inbox, Filter, LogOut, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
+import { usePaymentSSE } from '../hooks/usePaymentSSE'
 import type { Payment } from '../types'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
@@ -83,6 +84,46 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('All')
 
   const connected = address.length === 42
+
+  // ─── Toasts ───
+  interface Toast { id: number; payment: Payment }
+  const [toasts, setToasts] = useState<Toast[]>([])
+  const toastId = useRef(0)
+
+  const addToast = useCallback((payment: Payment) => {
+    const id = ++toastId.current
+    setToasts(prev => [...prev, { id, payment }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000)
+  }, [])
+
+  // ─── Browser notification permission ───
+  useEffect(() => {
+    if (connected && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [connected])
+
+  // ─── SSE ───
+  const handleSSE = useCallback((payment: Payment) => {
+    setPayments(prev => {
+      const idx = prev.findIndex(p => p.id === payment.id)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = payment
+        return next
+      }
+      return [payment, ...prev]
+    })
+    addToast(payment)
+    if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+      new Notification('ZapPay', {
+        body: `Payment ${shortAddr(payment.id)} is now ${payment.status}`,
+        icon: '/thunder.png',
+      })
+    }
+  }, [addToast])
+
+  usePaymentSSE(connected ? address : null, handleSSE)
 
   const disconnect = () => {
     setAddress('')
@@ -315,6 +356,20 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {/* Toast stack */}
+        {toasts.length > 0 && (
+          <div className="toast-container">
+            {toasts.map(t => (
+              <div key={t.id} className={`toast toast-${t.payment.status.toLowerCase()}`}>
+                <span className="toast-dot" />
+                <span>
+                  <strong>{shortAddr(t.payment.id)}</strong> &rarr; {t.payment.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
