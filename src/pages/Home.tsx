@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Copy, Check, QrCode, Share2, ArrowLeft, Shield, Loader2, LayoutDashboard } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Copy, Check, QrCode, Share2, ArrowLeft, Shield, Loader2 } from 'lucide-react'
 import type { Crypto, Network } from '../types'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
@@ -127,15 +126,7 @@ export default function Home() {
     return (
       <div className="hero">
         <BgElements />
-        <div className="hero-content">
-          {/* Logo centered */}
-          <div className="logo-center">
-            <div className="logo-wrap">
-              <div className="logo-glow" />
-              <img src="/thunder.png" alt="" className="logo-img" />
-            </div>
-            <div className="brand-logo">Zap<span>Pay</span></div>
-          </div>
+        <div className="hero-content dashboard">
 
           <div className="form-card fade-up">
             <div className="card-top">
@@ -199,8 +190,7 @@ export default function Home() {
   return (
     <div className="hero">
       <BgElements />
-      <div className="hero-content">
-        {/* Logo centered */}
+      <div className="hero-content dashboard">
         <div className="logo-center">
           <div className="logo-wrap">
             <div className="logo-glow" />
@@ -317,14 +307,6 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="text-c" style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <Link to="/dashboard" className="btn-ghost" style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <LayoutDashboard size={16} /> View Dashboard
-          </Link>
-          <Link to="/how-it-works" className="btn-ghost" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-            How it Works
-          </Link>
-        </div>
       </div>
     </div>
   )

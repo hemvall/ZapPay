@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Loader2, Download, ExternalLink, Inbox, Filter, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useAccount, useDisconnect } from 'wagmi'
+import { useAccount } from 'wagmi'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
 import { useEthPrice } from '../hooks/useEthPrice'
@@ -11,7 +11,7 @@ import type { Payment } from '../types'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
 
-const STATUSES = ['All', 'CREATED', 'PENDING', 'CONFIRMED', 'FAILED'] as const
+const STATUSES = ['All', 'PENDING', 'CONFIRMED', 'FAILED'] as const
 
 const EXPLORER: Record<string, string> = {
   ethereum: 'https://etherscan.io/tx/',
@@ -43,7 +43,7 @@ function explorerUrl(network: string, hash: string) {
 }
 
 function buildCsv(payments: Payment[]) {
-  const header = 'Date,Amount,Token,Network,Fee,Status,TxHash,Recipient,Payer'
+  const header = 'Date,Amount,Token,Network,Fee,Status,TxHash,Recipient'
   const rows = payments.map(p => {
     const fee = estimateFees(parseFloat(p.amount) || 0, p.token, p.network)
     return [
@@ -55,7 +55,6 @@ function buildCsv(payments: Payment[]) {
       p.status,
       p.txHash || '',
       p.recipientAddress,
-      p.payer || '',
     ].map(v => `"${v}"`).join(',')
   })
   return header + '\n' + rows.join('\n')
@@ -84,11 +83,10 @@ function toUsd(amount: number, token: string, ethPrice: number | null): number {
   return amount // USDC, USDT = 1:1
 }
 
-export default function Dashboard() {
+export default function History() {
   const { address, isConnected } = useAccount()
-  const { disconnect: wagmiDisconnect } = useDisconnect()
   const { ethPrice } = useEthPrice()
-  const [payments, setPayments] = useState<Payment[]>([])
+  const [allPayments, setAllPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('All')
@@ -106,16 +104,9 @@ export default function Dashboard() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000)
   }, [])
 
-  // ─── Browser notification permission ───
-  useEffect(() => {
-    if (connected && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
-    }
-  }, [connected])
-
   // ─── SSE ───
   const handleSSE = useCallback((payment: Payment) => {
-    setPayments(prev => {
+    setAllPayments(prev => {
       const idx = prev.findIndex(p => p.id === payment.id)
       if (idx >= 0) {
         const next = [...prev]
@@ -124,23 +115,13 @@ export default function Dashboard() {
       }
       return [payment, ...prev]
     })
-    addToast(payment)
-    if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
-      new Notification('ZapPay', {
-        body: `Payment ${shortAddr(payment.id)} is now ${payment.status}`,
-        icon: '/thunder.png',
-      })
+    // Only toast if the payment is one we sent
+    if (payment.payer?.toLowerCase() === address?.toLowerCase()) {
+      addToast(payment)
     }
-  }, [addToast])
+  }, [addToast, address])
 
   usePaymentSSE(connected ? address! : null, handleSSE)
-
-  const disconnect = () => {
-    wagmiDisconnect()
-    setPayments([])
-    setStatusFilter('All')
-    setError('')
-  }
 
   useEffect(() => {
     if (!connected) return
@@ -152,7 +133,7 @@ export default function Dashboard() {
         const res = await fetch(url)
         if (!res.ok) throw new Error(`Server error (${res.status})`)
         const data: Payment[] = await res.json()
-        setPayments(data)
+        setAllPayments(data)
       } catch (err: any) {
         setError(err.message || 'Failed to load payments')
       } finally {
@@ -162,24 +143,26 @@ export default function Dashboard() {
     fetchPayments()
   }, [address, connected])
 
-  const filtered = statusFilter === 'All'
-    ? payments
-    : payments.filter(p => p.status === statusFilter)
-
-  // Summary stats — payments where user is recipient
-  const myPayments = payments.filter(
-    p => p.recipientAddress.toLowerCase() === address!.toLowerCase()
+  // Filter to only sent payments (where user is the payer)
+  const sentPayments = allPayments.filter(
+    p => p.payer?.toLowerCase() === address?.toLowerCase()
   )
-  const confirmedPayments = myPayments.filter(p => p.status === 'CONFIRMED' || p.txHash)
-  const pendingPayments = myPayments.filter(p => !p.txHash && (p.status === 'CREATED' || p.status === 'PENDING'))
 
-  const totalReceived = confirmedPayments.reduce(
+  const filtered = statusFilter === 'All'
+    ? sentPayments
+    : sentPayments.filter(p => p.status === statusFilter)
+
+  // Summary stats
+  const confirmedSent = sentPayments.filter(p => p.status === 'CONFIRMED' || p.txHash)
+  const pendingSent = sentPayments.filter(p => !p.txHash && p.status === 'PENDING')
+
+  const totalSent = confirmedSent.reduce(
     (s, p) => s + toUsd(parseFloat(p.amount) || 0, p.token, ethPrice), 0
   )
-  const totalFees = confirmedPayments.reduce(
+  const totalFees = confirmedSent.reduce(
     (s, p) => s + estimateFees(parseFloat(p.amount) || 0, p.token, p.network), 0
   )
-  const toBeReceived = pendingPayments.reduce(
+  const pendingTotal = pendingSent.reduce(
     (s, p) => s + toUsd(parseFloat(p.amount) || 0, p.token, ethPrice), 0
   )
 
@@ -190,7 +173,7 @@ export default function Dashboard() {
     const a = document.createElement('a')
     const date = new Date().toISOString().slice(0, 10)
     a.href = url
-    a.download = `zappay-payments-${date}.csv`
+    a.download = `zappay-sent-payments-${date}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -209,8 +192,8 @@ export default function Dashboard() {
             <div className="brand-logo">Zap<span>Pay</span></div>
           </div>
           <div className="form-card fade-up text-c">
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Payment History</h2>
-            <p className="text-xs muted" style={{ marginBottom: 20 }}>Connect your wallet to view your transactions</p>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Sent Payments</h2>
+            <p className="text-xs muted" style={{ marginBottom: 20 }}>Connect your wallet to view your sent transactions</p>
             <WalletPicker compact />
             <Link to="/" className="btn-ghost" style={{ marginTop: 14, justifyContent: 'center' }}>
               <Zap size={12} /> Create a payment
@@ -238,7 +221,7 @@ export default function Dashboard() {
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>Dashboard</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>Sent Payments</h2>
               <p className="text-xs muted mono">{shortAddr(address!)}</p>
             </div>
             <WalletPicker />
@@ -247,12 +230,12 @@ export default function Dashboard() {
           {/* Summary cards */}
           <div className="summary-grid">
             <div className="stat-card">
-              <span className="stat-label">Total received</span>
-              <span className="stat-value">${totalReceived.toFixed(2)}</span>
+              <span className="stat-label">Total sent</span>
+              <span className="stat-value">${totalSent.toFixed(2)}</span>
             </div>
             <div className="stat-card">
-              <span className="stat-label">To be received</span>
-              <span className="stat-value">${toBeReceived.toFixed(2)}</span>
+              <span className="stat-label">Pending</span>
+              <span className="stat-value">${pendingTotal.toFixed(2)}</span>
             </div>
             <div className="stat-card">
               <span className="stat-label">Fees paid</span>
@@ -301,7 +284,7 @@ export default function Dashboard() {
           {!loading && !error && filtered.length === 0 && (
             <div className="empty-state">
               <Inbox size={32} strokeWidth={1.5} />
-              <p>No payments yet</p>
+              <p>No sent payments yet</p>
             </div>
           )}
 
@@ -313,7 +296,7 @@ export default function Dashboard() {
                   <tr>
                     <th>Date</th>
                     <th>Amount</th>
-                    <th>Fee</th>
+                    <th>To</th>
                     <th>Status</th>
                     <th>Tx Hash</th>
                   </tr>
@@ -327,7 +310,7 @@ export default function Dashboard() {
                       <tr key={p.id}>
                         <td className="text-xs">{formatDate(p.createdAt)}</td>
                         <td>{p.amount} {p.token}</td>
-                        <td className="muted">${fee.toFixed(2)}</td>
+                        <td className="mono text-xs">{shortAddr(p.recipientAddress)}</td>
                         <td><span className={statusClass(displayStatus)}>{displayStatus}</span></td>
                         <td>
                           {p.txHash ? (
