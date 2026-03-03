@@ -19,6 +19,48 @@
   --ease: cubic-bezier(0.4,0,0.2,1);
 }
 
+/* ─── Light mode ─── */
+[data-theme="light"] {
+  --bg: #f5f5fa;
+  --card: #ffffff;
+  --elevated: #ebebf3;
+  --border: rgba(0,0,0,0.08);
+  --border-h: rgba(0,0,0,0.16);
+  --text: #0d0d15;
+  --text2: #5a5b6e;
+  --text3: #9394a5;
+  --accent: #6652e0;
+  --accent-h: #7c65ff;
+  --accent-bg: rgba(102,82,224,0.08);
+  --success: #16a878;
+  --success-bg: rgba(22,168,120,0.1);
+}
+[data-theme="light"] .hero {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(102,82,224,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(22,168,120,0.04) 0%, transparent 40%),
+    var(--bg);
+}
+[data-theme="light"] .hero::before {
+  background-image:
+    linear-gradient(rgba(102,82,224,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(102,82,224,0.03) 1px, transparent 1px);
+}
+[data-theme="light"] .orb-1 { box-shadow: 0 0 8px rgba(102,82,224,0.3); }
+[data-theme="light"] .orb-2 { box-shadow: 0 0 6px rgba(167,139,250,0.3); }
+[data-theme="light"] .orb-3 { box-shadow: 0 0 6px rgba(22,168,120,0.3); }
+[data-theme="light"] .orb-4 { box-shadow: 0 0 5px rgba(98,126,234,0.3); }
+[data-theme="light"] .orb-5 { box-shadow: 0 0 5px rgba(240,184,50,0.3); }
+[data-theme="light"] .particle-line { opacity: 0.3; }
+[data-theme="light"] .logo-glow {
+  background: radial-gradient(circle, rgba(102,82,224,0.1) 0%, transparent 70%);
+}
+[data-theme="light"] .logo-img { mix-blend-mode: normal; }
+[data-theme="light"] .wp-dropdown { box-shadow: 0 12px 40px rgba(0,0,0,0.12); }
+[data-theme="light"] .wp-modal { box-shadow: 0 16px 48px rgba(0,0,0,0.15); }
+[data-theme="light"] .toast { box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+[data-theme="light"] .site-footer { background: linear-gradient(transparent, var(--bg) 40%); }
+
 html { -webkit-font-smoothing: antialiased; }
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -862,3 +904,43 @@ input, select { font: inherit; color: inherit; }
   color: var(--text2);
   margin-bottom: 4px;
 }
+
+/* ─── Theme toggle ─── */
+.theme-toggle {
+  position: fixed;
+  bottom: 44px;
+  right: 20px;
+  z-index: 60;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+/* ─── Expiration countdown ─── */
+.expiration-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text3);
+}
+.expiration-bar.warning { color: #f0b832; }
+.expiration-bar.danger { color: #ef4444; }
+.expiration-bar.expired { color: #ef4444; font-weight: 600; }

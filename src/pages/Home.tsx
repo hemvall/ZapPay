@@ -321,6 +321,9 @@ export default function Home() {
           <Link to="/dashboard" className="btn-ghost" style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
             <LayoutDashboard size={16} /> View Dashboard
           </Link>
+          <Link to="/how-it-works" className="btn-ghost" style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+            How it Works
+          </Link>
         </div>
       </div>
     </div>

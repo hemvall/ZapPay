@@ -12,6 +12,7 @@ import {
 } from 'wagmi'
 import { parseEther, parseUnits, erc20Abi, type Hex } from 'viem'
 import WalletPicker from '../components/WalletPicker'
+import ExpirationCountdown from '../components/ExpirationCountdown'
 import { TOKEN_ADDRESSES, TOKEN_DECIMALS, NETWORK_CHAIN_IDS, ZAPPAY_TREASURY } from '../lib/tokens'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
@@ -89,6 +90,7 @@ interface PaymentData {
   status: string
   txHash: string | null
   payer: string | null
+  expiresAt: string | null
 }
 
 export default function PayFlow() {
@@ -441,6 +443,16 @@ export default function PayFlow() {
               <NetworkBadge network={paymentData.network} />
             </p>
           </div>
+
+          <ExpirationCountdown
+            expiresAt={paymentData.expiresAt}
+            onExpired={() => {
+              fetch(`${API_URL}/payments/${id}`)
+                .then(r => r.json())
+                .then(d => setPaymentData(d))
+                .catch(() => {})
+            }}
+          />
 
           <div style={{ padding: '16px 0' }}>
             <div className="sum-row">
