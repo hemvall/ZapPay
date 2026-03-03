@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { Check, Shield, ArrowRight, ExternalLink, Loader2 } from 'lucide-react'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 import { estimateFees } from '../hooks/estimateFees'
@@ -160,7 +160,7 @@ export default function PayFlow() {
 
     setConfirmedTxHash(txHash)
 
-    fetch(`${API_URL}/payments/${paymentData.id}`, {
+    fetch(`${API_URL}/payments/${paymentData.id}/submit`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ txHash, payer: address }),
@@ -350,7 +350,10 @@ export default function PayFlow() {
                 <ExternalLink size={14} /> View on explorer
               </a>
             )}
-            <p className="text-xs dim mt-16">Recipient has been notified. You can close this page.</p>
+            <Link to="/dashboard" className="btn-ghost mt-12" style={{ justifyContent: 'center', textDecoration: 'none' }}>
+              Go to Dashboard
+            </Link>
+            <p className="text-xs dim mt-16">Recipient has been notified.</p>
           </div>
         </div>
       </div>
