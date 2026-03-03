@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Wallet, Loader2, Download, ExternalLink, Inbox, Filter, LogOut, Zap } from 'lucide-react'
+import { Loader2, Download, ExternalLink, Inbox, Filter, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAccount, useDisconnect } from 'wagmi'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
 import { usePaymentSSE } from '../hooks/usePaymentSSE'
+import WalletPicker from '../components/WalletPicker'
 import type { Payment } from '../types'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
@@ -77,13 +79,14 @@ function BgElements() {
 }
 
 export default function Dashboard() {
-  const [address, setAddress] = useState('')
+  const { address, isConnected } = useAccount()
+  const { disconnect: wagmiDisconnect } = useDisconnect()
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('All')
 
-  const connected = address.length === 42
+  const connected = isConnected && !!address
 
   // ─── Toasts ───
   interface Toast { id: number; payment: Payment }
@@ -123,28 +126,13 @@ export default function Dashboard() {
     }
   }, [addToast])
 
-  usePaymentSSE(connected ? address : null, handleSSE)
+  usePaymentSSE(connected ? address! : null, handleSSE)
 
   const disconnect = () => {
-    setAddress('')
+    wagmiDisconnect()
     setPayments([])
     setStatusFilter('All')
     setError('')
-  }
-
-  const connectWallet = async () => {
-    try {
-      const anyWindow = window as any
-      if (anyWindow.ethereum && anyWindow.ethereum.request) {
-        const accounts: string[] = await anyWindow.ethereum.request({ method: 'eth_requestAccounts' })
-        const acc = accounts && accounts[0]
-        if (acc) setAddress(acc)
-      } else {
-        alert('No Web3 wallet found. Please install MetaMask.')
-      }
-    } catch (err) {
-      console.error('connectWallet error', err)
-    }
   }
 
   useEffect(() => {
@@ -173,7 +161,7 @@ export default function Dashboard() {
 
   // Summary stats — only CONFIRMED payments where user is recipient
   const confirmedReceived = payments.filter(
-    p => p.status === 'CONFIRMED' && p.recipientAddress.toLowerCase() === address.toLowerCase()
+    p => p.status === 'CONFIRMED' && p.recipientAddress.toLowerCase() === address!.toLowerCase()
   )
   const totalReceived = confirmedReceived.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0)
   const totalFees = confirmedReceived.reduce(
@@ -208,9 +196,7 @@ export default function Dashboard() {
           <div className="form-card fade-up text-c">
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Payment History</h2>
             <p className="text-xs muted" style={{ marginBottom: 20 }}>Connect your wallet to view your transactions</p>
-            <button className="btn-primary" onClick={connectWallet}>
-              <Wallet size={15} /> Connect Wallet
-            </button>
+            <WalletPicker compact />
             <Link to="/" className="btn-ghost" style={{ marginTop: 14, justifyContent: 'center' }}>
               <Zap size={12} /> Create a payment
             </Link>
@@ -238,15 +224,13 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>Dashboard</h2>
-              <p className="text-xs muted mono">{shortAddr(address)}</p>
+              <p className="text-xs muted mono">{shortAddr(address!)}</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Link to="/" className="btn-ghost" style={{ fontSize: 13, padding: '7px 14px' }}>
                 <Zap size={12} /> Create a payment
               </Link>
-              <button className="btn-ghost" onClick={disconnect} style={{ fontSize: 13, color: '#ef4444' }}>
-                <LogOut size={12} /> Disconnect
-              </button>
+              <WalletPicker />
             </div>
           </div>
 
@@ -328,12 +312,13 @@ export default function Dashboard() {
                   {filtered.map(p => {
                     const amt = parseFloat(p.amount) || 0
                     const fee = estimateFees(amt, p.token, p.network)
+                    const displayStatus = p.txHash ? 'CONFIRMED' : p.status
                     return (
                       <tr key={p.id}>
                         <td className="text-xs">{formatDate(p.createdAt)}</td>
                         <td>{p.amount} {p.token}</td>
                         <td className="muted">${fee.toFixed(2)}</td>
-                        <td><span className={statusClass(p.status)}>{p.status}</span></td>
+                        <td><span className={statusClass(displayStatus)}>{displayStatus}</span></td>
                         <td>
                           {p.txHash ? (
                             <a
