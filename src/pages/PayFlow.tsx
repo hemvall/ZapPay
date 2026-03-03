@@ -36,7 +36,8 @@ function BgElements() {
 
 const NETWORK_LOGOS: Record<string, string> = {
   ethereum: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
-  base: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png'
+  base: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png',
+  sepolia: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
 }
 
 function getNetworkLogo(network: string): string | null {
@@ -74,6 +75,7 @@ function Logo() {
 const EXPLORER_URLS: Record<string, string> = {
   ethereum: 'https://etherscan.io/tx/',
   base: 'https://basescan.org/tx/',
+  sepolia: 'https://sepolia.etherscan.io/tx/',
 }
 
 interface PaymentData {
@@ -279,6 +281,7 @@ export default function PayFlow() {
           paymentData.recipientAddress as Hex,
           parseUnits(String(amount), decimals),
         ],
+        gas: BigInt(100_000),
       })
     }
   }

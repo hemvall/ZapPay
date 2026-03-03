@@ -17,6 +17,7 @@ const CRYPTOS: { id: Crypto; icon: string; logo: string; color: string }[] = [
 ]
 
 const NETWORKS: { id: Network; label: string; logo: string; sub: string }[] = [
+  { id: 'Sepolia', label: 'Sepolia', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', sub: 'Testnet' },
   { id: 'Base', label: 'Base', logo: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png', sub: 'Fast & cheap' },
   { id: 'Ethereum', label: 'Ethereum', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', sub: 'Mainnet' },
 ]
@@ -44,7 +45,7 @@ export default function Home() {
   const [manualAddress, setManualAddress] = useState('')
   const [amount, setAmount] = useState('')
   const [crypto, setCrypto] = useState<Crypto>('USDC')
-  const [network, setNetwork] = useState<Network>('Base')
+  const [network, setNetwork] = useState<Network>('Sepolia')
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
