@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield, Loader2 } from 'lucide-react'
+import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield, Loader2, LayoutDashboard } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import type { Crypto, Network } from '../types'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
@@ -333,7 +334,12 @@ export default function Home() {
           </button>
         </div>
 
-        <p className="text-xs dim text-c" style={{ marginTop: 14 }}>No account needed. No data stored. Just crypto.</p>
+        <div className="text-c" style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <Link to="/dashboard" className="btn-ghost" style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <LayoutDashboard size={16} /> View Dashboard
+          </Link>
+          <p className="text-xs dim">No account needed. No data stored. Just crypto.</p>
+        </div>
       </div>
     </div>
   )
