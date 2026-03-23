@@ -4,6 +4,7 @@ import { WagmiProvider } from './lib/WagmiProvider'
 import Home from './pages/Home'
 import PayFlow from './pages/PayFlow'
 import Dashboard from './pages/Dashboard'
+import Card from './pages/Card'
 import History from './pages/History'
 import Terms from './pages/Terms'
 import HowItWorks from './pages/HowItWorks'
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/pay/:id" element={<PayFlow />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/card" element={<Card />} />
           <Route path="/history" element={<History />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
