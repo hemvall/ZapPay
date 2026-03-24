@@ -38,7 +38,7 @@ function BgElements() {
 const NETWORK_LOGOS: Record<string, string> = {
   ethereum: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
   base: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png',
-  sepolia: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
+  sepolia: 'https://rpc.info/logos/ethereum.png',
 }
 
 function getNetworkLogo(network: string): string | null {
