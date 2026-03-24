@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Zap, LayoutDashboard, SendHorizonal, CreditCard } from 'lucide-react'
+import WalletPicker from './WalletPicker'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Create', icon: Zap },
@@ -22,8 +23,9 @@ export default function NavBar() {
           <Icon size={14} />
           <span>{label}</span>
         </Link>
-
       ))}
+      <div className="nav-divider" />
+      <WalletPicker compact />
     </nav>
   )
 }
