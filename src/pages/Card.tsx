@@ -1,56 +1,29 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
-import { useAccount, useBalance } from 'wagmi'
-import { base, mainnet } from 'wagmi/chains'
-import { Wallet } from 'lucide-react'
+import { useAccount } from 'wagmi'
+import { Wallet, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useCryptoPrices } from '../hooks/useCryptoPrices'
+import { useBaseTokens, type TokenEntry } from '../hooks/useBaseTokens'
 
 // ═══════════════════════════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════════════════════════
 
-interface ChainData {
-  ticker: string
-  name: string
-  icon: string
-  color: string
-  glow: string
-  price: number
-  balance: number
-  pair: string
-  bars: number[]
-}
-
-const FALLBACK_CHAINS: Record<string, ChainData> = {
-  btc: {
-    ticker: 'BTC', name: 'Bitcoin', icon: '₿', color: '#f59e0b',
-    glow: 'rgba(245,158,11,0.45)', price: 119700, balance: 0, pair: 'BTC/USD',
-    bars: [8, 14, 10, 18, 12, 22, 16, 20, 24, 18, 26, 20, 28],
-  },
-  sol: {
-    ticker: 'SOL', name: 'Solana', icon: '◎', color: '#9945ff',
-    glow: 'rgba(153,69,255,0.45)', price: 168.4, balance: 0, pair: 'SOL/USD',
-    bars: [10, 8, 16, 12, 20, 14, 18, 22, 16, 24, 20, 26, 22],
-  },
-  base: {
-    ticker: 'ETH', name: 'Base (ETH)', icon: 'Ξ', color: '#0052ff',
-    glow: 'rgba(0,82,255,0.45)', price: 2840.2, balance: 0, pair: 'ETH/USD',
-    bars: [12, 18, 10, 22, 16, 14, 20, 18, 24, 16, 22, 20, 26],
-  },
-}
-
 function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`
 }
 
-interface WalletData {
-  label: string
-  sub: string
-  addr: string
-  icon: string
-}
-
 const SPENDING_LIMITS = ['0.5 BTC', '1 BTC', '5 BTC', 'NO LIMIT']
 const DEFAULT_LIMIT_INDEX = 2
+
+// Generate pseudo-random sparkline bars from ticker name
+function sparkBars(ticker: string): number[] {
+  let seed = 0
+  for (let i = 0; i < ticker.length; i++) seed += ticker.charCodeAt(i)
+  return Array.from({ length: 13 }, (_, i) => {
+    seed = (seed * 16807 + i) % 2147483647
+    return 6 + (seed % 24)
+  })
+}
 
 const fmt = (n: number, min = 2, max = 2) =>
   n.toLocaleString('en-US', { minimumFractionDigits: min, maximumFractionDigits: max })
@@ -124,111 +97,122 @@ function SettingsRow({ icon, label, labelColor, sub, right }: {
 
 export default function CryptoCard() {
   const [tab, setTab] = useState<'wallet' | 'settings'>('wallet')
-  const [chain, setChain] = useState('base')
+  const [tokenIdx, setTokenIdx] = useState(0)
   const [nfcFlash, setNfcFlash] = useState(false)
   const [txActive, setTxActive] = useState(false)
   const [txData, setTxData] = useState({ amt: '', usd: '' })
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
-  const [floatPaused, setFloatPaused] = useState(false)
   const [releasing, setReleasing] = useState(false)
   const [copiedAddr, setCopiedAddr] = useState<string | null>(null)
 
   // Wallet (from global navbar WalletPicker via wagmi)
   const { address, isConnected } = useAccount()
   const { prices } = useCryptoPrices()
+  const { tokens, loading: tokensLoading } = useBaseTokens(
+    isConnected ? address : undefined,
+    prices.eth,
+  )
 
-  const { data: ethBaseBal } = useBalance({
-    address,
-    chainId: base.id,
-    query: { enabled: isConnected },
-  })
-  const { data: ethMainnetBal } = useBalance({
-    address,
-    chainId: mainnet.id,
-    query: { enabled: isConnected },
-  })
+  // Current token
+  const t: TokenEntry | null = tokens[tokenIdx] ?? null
+  const bars = t ? sparkBars(t.ticker) : []
 
-  // Build CHAINS with live prices + balances
-  const CHAINS: Record<string, ChainData> = {
-    btc: {
-      ...FALLBACK_CHAINS.btc,
-      price: prices.btc ?? FALLBACK_CHAINS.btc.price,
-    },
-    sol: {
-      ...FALLBACK_CHAINS.sol,
-      price: prices.sol ?? FALLBACK_CHAINS.sol.price,
-    },
-    base: {
-      ...FALLBACK_CHAINS.base,
-      price: prices.eth ?? FALLBACK_CHAINS.base.price,
-      balance: isConnected && ethBaseBal ? parseFloat(ethBaseBal.formatted) : 0,
-    },
-  }
+  // Keep index in bounds when tokens change
+  useEffect(() => {
+    if (tokenIdx >= tokens.length && tokens.length > 0) setTokenIdx(0)
+  }, [tokens.length, tokenIdx])
 
-  // Wallet addresses for settings
-  const WALLETS: Record<string, WalletData> = {
-    base: {
-      label: 'Base', sub: 'BASE L2', icon: '🔵',
-      addr: isConnected && address ? shortAddr(address) : '—',
-    },
-    eth: {
-      label: 'Ethereum', sub: 'ETH MAINNET', icon: 'Ξ',
-      addr: isConnected && address ? shortAddr(address) : '—',
-    },
-  }
+  // Navigate tokens
+  const prevToken = useCallback(() => {
+    if (tokens.length <= 1) return
+    setTokenIdx(i => (i - 1 + tokens.length) % tokens.length)
+    setNfcFlash(true)
+    setTimeout(() => setNfcFlash(false), 750)
+  }, [tokens.length])
 
-  const [livePrice, setLivePrice] = useState(FALLBACK_CHAINS.base.price)
-  const livePriceRef = useRef(livePrice)
-  const chainRef = useRef(chain)
-  const chainsRef = useRef(CHAINS)
+  const nextToken = useCallback(() => {
+    if (tokens.length <= 1) return
+    setTokenIdx(i => (i + 1) % tokens.length)
+    setNfcFlash(true)
+    setTimeout(() => setNfcFlash(false), 750)
+  }, [tokens.length])
+
   const cardRef = useRef<HTMLDivElement>(null)
+  const sceneRef = useRef<HTMLDivElement>(null)
+  const wheelCooldown = useRef(false)
+
+  // Scroll on card to change token — imperative listener with passive:false
+  useEffect(() => {
+    const el = sceneRef.current
+    if (!el || tokens.length <= 1) return
+
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      if (wheelCooldown.current) return
+      wheelCooldown.current = true
+      setTimeout(() => { wheelCooldown.current = false }, 350)
+
+      if (e.deltaY > 0 || e.deltaX > 0) nextToken()
+      else prevToken()
+    }
+
+    el.addEventListener('wheel', handler, { passive: false })
+    return () => el.removeEventListener('wheel', handler)
+  }, [tokens.length, nextToken, prevToken])
+
+  // Live price ticker
+  const [livePrice, setLivePrice] = useState(0)
+  const livePriceRef = useRef(livePrice)
+  const basePriceRef = useRef(0)
 
   useEffect(() => { livePriceRef.current = livePrice }, [livePrice])
-  useEffect(() => { chainRef.current = chain }, [chain])
-  useEffect(() => { chainsRef.current = CHAINS })
+
+  // Reset live price when token changes
+  useEffect(() => {
+    if (!t) return
+    basePriceRef.current = t.price
+    setLivePrice(t.price)
+  }, [t?.ticker, t?.price])
 
   useEffect(() => {
     const id = setInterval(() => {
-      const ch = chainsRef.current[chainRef.current]
+      const base = basePriceRef.current
+      if (base <= 0) return
       let p = livePriceRef.current
-      p += (Math.random() - 0.48) * (ch.price * 0.0015)
-      p = Math.max(ch.price * 0.97, Math.min(ch.price * 1.03, p))
+      p += (Math.random() - 0.48) * (base * 0.0015)
+      p = Math.max(base * 0.97, Math.min(base * 1.03, p))
       setLivePrice(p)
     }, 2200)
     return () => clearInterval(id)
   }, [])
 
-  useEffect(() => { setLivePrice(CHAINS[chain].price) }, [chain, CHAINS[chain].price])
-
-  const c = CHAINS[chain]
-  const balUsd = c.balance * livePrice
-  const change = ((livePrice - c.price * 0.98) / (c.price * 0.98) * 100).toFixed(2)
+  const balUsd = t ? t.balance * livePrice : 0
+  const change = t && t.price > 0
+    ? ((livePrice - t.price * 0.98) / (t.price * 0.98) * 100).toFixed(2)
+    : '0.00'
   const isUp = Number(change) >= 0
+  const color = t?.color || '#0052ff'
+  const glow = t?.glow || 'rgba(0,82,255,0.45)'
 
   const triggerNFC = useCallback(() => {
     setNfcFlash(true)
     setTimeout(() => setNfcFlash(false), 750)
   }, [])
 
-  const switchChain = useCallback((key: string) => {
-    if (key === chain) return
-    setChain(key)
-    triggerNFC()
-  }, [chain, triggerNFC])
-
   const simulateTx = useCallback((type: 'send' | 'recv') => {
+    if (!t) return
     triggerNFC()
     setTimeout(() => {
       const amt = (Math.random() * 5 + 0.1).toFixed(4)
       const usd = fmt(Number(amt) * livePriceRef.current)
       setTxData({
-        amt: (type === 'recv' ? '+' : '') + amt + ' ' + chainsRef.current[chainRef.current].ticker,
+        amt: (type === 'recv' ? '+' : '') + amt + ' ' + t.ticker,
         usd: '$ ' + usd,
       })
       setTxActive(true)
       setTimeout(() => setTxActive(false), 2600)
     }, 350)
-  }, [triggerNFC])
+  }, [t, triggerNFC])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!cardRef.current) return
@@ -236,21 +220,19 @@ export default function CryptoCard() {
     const cx = r.left + r.width / 2
     const cy = r.top + r.height / 2
     setTilt({ x: (e.clientX - cx) / 22, y: -(e.clientY - cy) / 22 })
-    setFloatPaused(true)
   }, [])
 
   const handleMouseLeave = useCallback(() => {
     setReleasing(true)
     setTilt({ x: 0, y: 0 })
-    setFloatPaused(false)
     setTimeout(() => setReleasing(false), 500)
   }, [])
 
-  const copyAddr = useCallback((key: string) => {
-    if ((key === 'base' || key === 'eth') && isConnected && address) {
+  const copyAddr = useCallback(() => {
+    if (isConnected && address) {
       navigator.clipboard.writeText(address).catch(() => {})
     }
-    setCopiedAddr(key)
+    setCopiedAddr('addr')
     setTimeout(() => setCopiedAddr(null), 1500)
   }, [isConnected, address])
 
@@ -303,9 +285,9 @@ export default function CryptoCard() {
 
         {/* Nav Tabs */}
         <div className="zc-nav-tabs">
-          {(['wallet', 'settings'] as const).map((t) => (
-            <button key={t} className={`zc-nav-tab ${tab === t ? 'on' : ''}`} onClick={() => setTab(t)}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+          {(['wallet', 'settings'] as const).map((tb) => (
+            <button key={tb} className={`zc-nav-tab ${tab === tb ? 'on' : ''}`} onClick={() => setTab(tb)}>
+              {tb.charAt(0).toUpperCase() + tb.slice(1)}
             </button>
           ))}
         </div>
@@ -313,151 +295,176 @@ export default function CryptoCard() {
         {/* ════════ WALLET ════════ */}
         {tab === 'wallet' && (
           <div className="fade-up">
-            {/* 3D Card */}
-            <div className="zc-scene">
-              <div
-                ref={cardRef}
-                className={`zc-tilt-wrapper ${releasing ? 'releasing' : ''}`}
-                style={{ transform: `rotateY(${tilt.x}deg) rotateX(${tilt.y}deg)` }}
-              >
-                <div className="zc-card zc-float">
+
+            {tokensLoading && tokens.length === 0 ? (
+              <div className="text-c" style={{ padding: 40 }}>
+                <div className="zc-loading-spinner" />
+                <p className="text-xs muted" style={{ marginTop: 12 }}>Loading tokens...</p>
+              </div>
+            ) : tokens.length === 0 ? (
+              <div className="text-c" style={{ padding: 40 }}>
+                <p className="text-s muted">No tokens found on Base</p>
+              </div>
+            ) : t && (
+              <>
+                {/* 3D Card with scroll */}
+                <div className="zc-scene" ref={sceneRef}>
                   <div
-                    className="zc-card-inner"
-                    style={{
-                      borderColor: c.color + '44',
-                      boxShadow: `0 0 0 1px ${c.color}20, 0 0 50px ${c.color}22, inset 0 1px 0 rgba(255,255,255,0.04), 0 40px 80px rgba(0,0,0,0.7)`,
-                    }}
-                    onClick={() => simulateTx('send')}
+                    ref={cardRef}
+                    className={`zc-tilt-wrapper ${releasing ? 'releasing' : ''}`}
+                    style={{ transform: `rotateY(${tilt.x}deg) rotateX(${tilt.y}deg)` }}
                   >
-                    <div className="zc-card-grid" />
-                    <div className="zc-corner-accent" style={{ background: `radial-gradient(circle at 0 0, ${c.color}18, transparent 70%)` }} />
-                    <div
-                      className={nfcFlash ? 'zc-nfc-flash nfc-flash-anim' : 'zc-nfc-flash'}
-                      style={{
-                        background: `radial-gradient(circle at center, ${c.color}55, transparent 70%)`,
-                        opacity: nfcFlash ? 1 : 0,
-                      }}
-                    />
-                    <div className="zc-shimmer card-shimmer" />
-                    <div className="zc-nfc-rings">
-                      <svg width="40" height="40" viewBox="0 0 40 40">
-                        <circle cx="20" cy="20" r="8" stroke="white" strokeWidth="1.5" fill="none" />
-                        <circle cx="20" cy="20" r="14" stroke="white" strokeWidth="1" fill="none" />
-                        <circle cx="20" cy="20" r="19" stroke="white" strokeWidth="0.6" fill="none" />
-                      </svg>
-                    </div>
-
-                    {/* Card Content */}
-                    <div className="zc-card-content">
-                      <div className="zc-card-top">
-                        <div>
-                          <div className="zc-owner-label">Card Owner</div>
-                          <div className="zc-owner-name">{shortAddr(address)}</div>
+                    <div className="zc-card zc-float">
+                      <div
+                        className="zc-card-inner"
+                        style={{
+                          borderColor: color + '44',
+                          boxShadow: `0 0 0 1px ${color}20, 0 0 50px ${color}22, inset 0 1px 0 rgba(255,255,255,0.04), 0 40px 80px rgba(0,0,0,0.7)`,
+                        }}
+                      >
+                        <div className="zc-card-grid" />
+                        <div className="zc-corner-accent" style={{ background: `radial-gradient(circle at 0 0, ${color}18, transparent 70%)` }} />
+                        <div
+                          className={nfcFlash ? 'zc-nfc-flash nfc-flash-anim' : 'zc-nfc-flash'}
+                          style={{
+                            background: `radial-gradient(circle at center, ${color}55, transparent 70%)`,
+                            opacity: nfcFlash ? 1 : 0,
+                          }}
+                        />
+                        <div className="zc-shimmer card-shimmer" />
+                        <div className="zc-nfc-rings">
+                          <svg width="40" height="40" viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="8" stroke="white" strokeWidth="1.5" fill="none" />
+                            <circle cx="20" cy="20" r="14" stroke="white" strokeWidth="1" fill="none" />
+                            <circle cx="20" cy="20" r="19" stroke="white" strokeWidth="0.6" fill="none" />
+                          </svg>
                         </div>
-                        <div className="zc-live-badge">
-                          <div className="zc-live-dot live-blink" />
-                          LIVE
-                        </div>
-                      </div>
 
-                      <div className="zc-card-middle">
-                        <div className="zc-coin-block">
-                          <div
-                            className="zc-coin-icon"
-                            style={{
-                              background: `radial-gradient(circle, ${c.color}44, ${c.color}0d)`,
-                              border: `1.5px solid ${c.color}88`,
-                              boxShadow: `0 0 22px ${c.glow}, inset 0 0 10px ${c.color}1a`,
-                              color: c.color,
-                            }}
-                          >
-                            {c.icon}
+                        {/* Card Content */}
+                        <div className="zc-card-content">
+                          <div className="zc-card-top">
+                            <div>
+                              <div className="zc-owner-label">Card Owner</div>
+                              <div className="zc-owner-name">{shortAddr(address)}</div>
+                            </div>
+                            <div className="zc-live-badge">
+                              <div className="zc-live-dot live-blink" />
+                              LIVE
+                            </div>
                           </div>
+
+                          <div className="zc-card-middle">
+                            <div className="zc-coin-block">
+                              <div
+                                className="zc-coin-icon"
+                                style={{
+                                  background: `radial-gradient(circle, ${color}44, ${color}0d)`,
+                                  border: `1.5px solid ${color}88`,
+                                  boxShadow: `0 0 22px ${glow}, inset 0 0 10px ${color}1a`,
+                                  color,
+                                }}
+                              >
+                                {t.icon}
+                              </div>
+                              <div>
+                                <div className="zc-coin-ticker" style={{ color }}>{t.ticker}</div>
+                                <div className="zc-coin-name">{t.name}</div>
+                              </div>
+                            </div>
+                            <div className="zc-balance-block">
+                              <div className="zc-bal-amount">
+                                {t.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}
+                              </div>
+                              <div className="zc-bal-usd" style={{ color }}>
+                                {fmtUsd(balUsd)}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="zc-card-bottom">
+                            <div className="zc-sparkline">
+                              {bars.map((h, i) => (
+                                <div
+                                  key={i}
+                                  className="zc-spark-bar"
+                                  style={{
+                                    height: h,
+                                    background: i === bars.length - 1 ? color : color + '66',
+                                    boxShadow: i === bars.length - 1 ? `0 0 6px ${color}` : 'none',
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            <div className="zc-brand">ZAPCARD</div>
+                          </div>
+                        </div>
+
+                        {/* TX Overlay */}
+                        <div className={`zc-tx-overlay ${txActive ? 'active' : ''}`}>
+                          <div className="tx-check-pop zc-tx-check">
+                            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="var(--success)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </div>
+                          <div className="zc-tx-label">Transaction<br />Complete</div>
                           <div>
-                            <div className="zc-coin-ticker" style={{ color: c.color }}>{c.ticker}</div>
-                            <div className="zc-coin-name">{c.name}</div>
+                            <div className="zc-tx-amt">{txData.amt}</div>
+                            <div className="zc-tx-usd">{txData.usd}</div>
                           </div>
                         </div>
-                        <div className="zc-balance-block">
-                          <div className="zc-bal-amount">
-                            {c.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}
-                          </div>
-                          <div className="zc-bal-usd" style={{ color: c.color }}>
-                            {fmtUsd(balUsd)}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="zc-card-bottom">
-                        <div className="zc-sparkline">
-                          {c.bars.map((h, i) => (
-                            <div
-                              key={i}
-                              className="zc-spark-bar"
-                              style={{
-                                height: h,
-                                background: i === c.bars.length - 1 ? c.color : c.color + '66',
-                                boxShadow: i === c.bars.length - 1 ? `0 0 6px ${c.color}` : 'none',
-                              }}
-                            />
-                          ))}
-                        </div>
-                        <div className="zc-brand">ZAPCARD</div>
-                      </div>
-                    </div>
-
-                    {/* TX Overlay */}
-                    <div className={`zc-tx-overlay ${txActive ? 'active' : ''}`}>
-                      <div className="tx-check-pop zc-tx-check">
-                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="var(--success)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </div>
-                      <div className="zc-tx-label">Transaction<br />Complete</div>
-                      <div>
-                        <div className="zc-tx-amt">{txData.amt}</div>
-                        <div className="zc-tx-usd">{txData.usd}</div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Chain pills */}
-            <div className="zc-chain-switcher">
-              {Object.entries(CHAINS).map(([key, ch]) => (
-                <button
-                  key={key}
-                  className={`zc-chain-btn ${chain === key ? 'on' : ''}`}
-                  onClick={() => switchChain(key)}
-                  style={chain === key ? { borderColor: ch.color + '55', color: ch.color, background: ch.color + '12' } : undefined}
-                >
-                  <span className="zc-chain-dot" style={{ background: ch.color, boxShadow: `0 0 6px ${ch.color}` }} />
-                  {ch.ticker}
-                </button>
-              ))}
-            </div>
+                {/* Token navigation arrows */}
+                {tokens.length > 1 && (
+                  <div className="zc-token-nav">
+                    <button className="zc-arrow-btn" onClick={prevToken}>
+                      <ChevronLeft size={18} />
+                    </button>
+                    <div className="zc-token-dots">
+                      {tokens.map((_, i) => (
+                        <div
+                          key={i}
+                          className={`zc-tdot ${i === tokenIdx ? 'on' : ''}`}
+                          style={i === tokenIdx ? { background: color, boxShadow: `0 0 6px ${color}` } : undefined}
+                          onClick={() => { setTokenIdx(i); triggerNFC() }}
+                        />
+                      ))}
+                    </div>
+                    <button className="zc-arrow-btn" onClick={nextToken}>
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                )}
+                {tokens.length > 1 && (
+                  <div className="zc-scroll-hint">Scroll on card or use arrows to browse tokens</div>
+                )}
 
-            {/* Actions */}
-            <div className="zc-action-row">
-              <button className="btn-primary zc-action-btn" onClick={() => simulateTx('send')}>
-                ⬆ Send
-              </button>
-              <button className="btn-secondary zc-action-btn" onClick={() => simulateTx('recv')}>
-                ⬇ Receive
-              </button>
-            </div>
+                {/* Actions */}
+                <div className="zc-action-row">
+                  <button className="btn-primary zc-action-btn" onClick={() => simulateTx('send')}>
+                    ⬆ Send
+                  </button>
+                  <button className="btn-secondary zc-action-btn" onClick={() => simulateTx('recv')}>
+                    ⬇ Receive
+                  </button>
+                </div>
 
-            {/* Ticker */}
-            <div className="zc-ticker">
-              <span className="zc-ticker-price" style={{ color: c.color }}>
-                {c.pair} ${Math.round(livePrice).toLocaleString()}
-              </span>
-              <span style={{ color: isUp ? 'var(--success)' : '#ef4444' }}>
-                {isUp ? '▲+' : '▼'}{change}%
-              </span>
-            </div>
+                {/* Ticker */}
+                <div className="zc-ticker">
+                  <span className="zc-ticker-price" style={{ color }}>
+                    {t.ticker}/USD {t.price > 0 ? '$' + Math.round(livePrice).toLocaleString() : '—'}
+                  </span>
+                  {t.price > 0 && (
+                    <span style={{ color: isUp ? 'var(--success)' : '#ef4444' }}>
+                      {isUp ? '▲+' : '▼'}{change}%
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -480,19 +487,41 @@ export default function CryptoCard() {
             </SettingsSection>
 
             <SettingsSection label="Wallets">
-              {Object.entries(WALLETS).map(([key, w]) => (
-                <SettingsRow key={key} icon={w.icon} label={w.label} sub={w.sub}
-                  right={
-                    <div
-                      className={`zc-wallet-addr ${copiedAddr === key ? 'copied' : ''}`}
-                      onClick={() => copyAddr(key)}
-                    >
-                      {copiedAddr === key ? 'COPIED ✓' : w.addr}
-                    </div>
-                  }
-                />
-              ))}
+              <SettingsRow icon="🔵" label="Base" sub="BASE L2"
+                right={
+                  <div
+                    className={`zc-wallet-addr ${copiedAddr === 'addr' ? 'copied' : ''}`}
+                    onClick={copyAddr}
+                  >
+                    {copiedAddr === 'addr' ? 'COPIED ✓' : shortAddr(address)}
+                  </div>
+                }
+              />
             </SettingsSection>
+
+            {/* Token list */}
+            {tokens.length > 0 && (
+              <SettingsSection label={`Tokens (${tokens.length})`}>
+                {tokens.map((tk) => (
+                  <SettingsRow
+                    key={tk.ticker + (tk.address || 'native')}
+                    icon={tk.icon}
+                    label={tk.ticker}
+                    sub={tk.name.toUpperCase()}
+                    right={
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                          {tk.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: "'SF Mono', Monaco, Consolas, monospace" }}>
+                          {tk.usdValue > 0 ? fmtUsd(tk.usdValue) : '—'}
+                        </div>
+                      </div>
+                    }
+                  />
+                ))}
+              </SettingsSection>
+            )}
 
             <SettingsSection label="Security">
               <SettingsRow icon="🛡️" label="Biometric Auth" sub="FACE ID / FINGERPRINT"
@@ -753,6 +782,49 @@ const cardCSS = `
 }
 .zc-wallet-addr:hover { border-color: var(--border-h); }
 .zc-wallet-addr.copied { color: var(--success); border-color: var(--success); }
+
+/* Token navigation */
+.zc-token-nav {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin-bottom: 6px;
+}
+.zc-arrow-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--text2); cursor: pointer; transition: all 0.15s;
+  flex-shrink: 0;
+}
+.zc-arrow-btn:hover { border-color: var(--border-h); color: var(--text); background: var(--elevated); }
+.zc-arrow-btn:active { transform: scale(0.92); }
+.zc-token-dots {
+  display: flex; align-items: center; gap: 5px;
+  max-width: 200px; overflow-x: auto; padding: 4px 0;
+}
+.zc-token-dots::-webkit-scrollbar { display: none; }
+.zc-tdot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--border); cursor: pointer;
+  transition: all 0.25s;
+}
+.zc-tdot.on { width: 8px; height: 8px; }
+
+.zc-scroll-hint {
+  text-align: center; font-size: 10px; color: var(--text3);
+  letter-spacing: 0.5px; margin-bottom: 12px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  opacity: 0.7;
+}
+
+/* Loading spinner */
+.zc-loading-spinner {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Animations */
 @keyframes zcFloat {
