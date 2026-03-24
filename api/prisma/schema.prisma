@@ -17,6 +17,7 @@ model Payment {
   status           String   @default("CREATED")
   txHash           String?  @unique
   payer            String?
+  expiresAt        DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

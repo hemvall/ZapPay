@@ -4,7 +4,8 @@
       "Bash(cd:*)",
       "Bash(head:*)",
       "Bash(tail:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }

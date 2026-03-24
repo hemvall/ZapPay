@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CryptoCard — Print World</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #040508;
+  --btc: #f59e0b; --btc-glow: rgba(245,158,11,0.45);
+  --sol: #9945ff; --sol-glow: rgba(153,69,255,0.45);
+  --base: #0052ff; --base-glow: rgba(0,82,255,0.45);
+  --green: #22c55e; --green-glow: rgba(34,197,94,0.4);
+  --gold: #f59e0b;
+  --text: #e2e8f0; --muted: #475569; --muted2: #94a3b8;
+  --accent: #3b82f6;
+  --accent-glow: rgba(59,130,246,0.4);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 85%, rgba(59,130,246,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 15%, rgba(153,69,255,0.04) 0%, transparent 60%);
+  pointer-events:none;
+}
+body::after {
+  content:''; position:fixed; inset:0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px);
+  pointer-events:none; z-index:100;
+}
+
+/* ===== WRAPPER ===== */
+.wrapper {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0; position: relative;
+}
+
+/* ===== NAV TABS ===== */
+.nav-tabs {
+  display: flex; gap: 2px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 4px;
+  margin-bottom: 20px;
+}
+.nav-tab {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 2px; text-transform: uppercase;
+  padding: 8px 20px; border-radius: 10px;
+  border: none; background: transparent;
+  color: var(--muted); cursor: pointer;
+  transition: all 0.25s ease;
+}
+.nav-tab.active {
+  background: rgba(255,255,255,0.07);
+  color: var(--text);
+  box-shadow: 0 0 16px rgba(0,0,0,0.4);
+}
+.nav-tab:hover:not(.active) { color: var(--muted2); }
+
+/* ===== SCENE ===== */
+.scene { perspective: 1200px; }
+
+/* ===== CARD ===== */
+.card {
+  width: 440px; height: 270px;
+  border-radius: 24px;
+  position: relative;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  animation: float 6s ease-in-out infinite;
+  transition: animation 0.3s;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0) rotateX(2deg) rotateY(-2deg); }
+  50%      { transform: translateY(-10px) rotateX(-1deg) rotateY(2deg); }
+}
+
+.card-inner {
+  width:100%; height:100%; border-radius:24px;
+  background: linear-gradient(140deg, #0c1120 0%, #070c18 50%, #050810 100%);
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden; position: relative;
+  transition: border-color 0.5s, box-shadow 0.5s;
+  box-shadow:
+    0 0 0 1px rgba(59,130,246,0.12),
+    0 0 50px rgba(59,130,246,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 50px 100px rgba(0,0,0,0.9);
+}
+
+/* Grid */
+.card-grid {
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+  border-radius:24px;
+}
+
+/* Shimmer */
+.card-inner::after {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,0.04) 50%, transparent 65%);
+  animation: shimmer 5s ease-in-out infinite;
+  pointer-events:none; z-index:3;
+}
+@keyframes shimmer {
+  0%,100% { opacity:0; transform:translateX(-120%); }
+  50%      { opacity:1; transform:translateX(150%); }
+}
+
+/* Corner accent */
+.corner-accent {
+  position:absolute; top:0; left:0;
+  width:80px; height:80px;
+  background: radial-gradient(circle at 0 0, rgba(59,130,246,0.12), transparent 70%);
+  border-radius:24px 0 0 0;
+  transition: background 0.5s;
+}
+
+/* NFC Flash */
+.nfc-flash {
+  position:absolute; inset:0; border-radius:24px;
+  pointer-events:none; z-index:20; opacity:0;
+}
+.nfc-flash.flash { animation: nfcpop 0.7s ease forwards; }
+@keyframes nfcpop {
+  0%   { opacity:0; }
+  20%  { opacity:1; }
+  100% { opacity:0; }
+}
+
+/* NFC Rings */
+.nfc-rings {
+  position:absolute; right:20px; top:50%; transform:translateY(-50%);
+  width:40px; height:40px; z-index:6; opacity:0.12;
+  display:flex; align-items:center; justify-content:center;
+}
+.nfc-rings svg { position:absolute; }
+
+/* === CARD CONTENT === */
+.card-content {
+  position:relative; z-index:5;
+  padding:22px 26px;
+  height:100%; display:flex; flex-direction:column;
+  justify-content:space-between;
+}
+
+/* Top row */
+.card-top { display:flex; justify-content:space-between; align-items:flex-start; }
+.owner-label { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:2.5px; text-transform:uppercase; }
+.owner-name  { font-family:'Orbitron',monospace; font-size:13px; font-weight:600; color:var(--text); letter-spacing:1px; margin-top:3px; }
+
+.live-badge {
+  display:flex; align-items:center; gap:6px;
+  background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.25);
+  border-radius:20px; padding:5px 11px;
+  font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--green); letter-spacing:1.5px;
+}
+.live-dot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 6px var(--green); animation:blink 2s ease infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Middle */
+.card-middle { display:flex; justify-content:space-between; align-items:flex-end; }
+
+.coin-block { display:flex; align-items:center; gap:14px; }
+.coin-icon {
+  width:48px; height:48px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; font-weight:900;
+  transition: background 0.5s, border-color 0.5s, box-shadow 0.5s, color 0.5s;
+}
+.coin-ticker { font-family:'Orbitron',monospace; font-size:20px; font-weight:700; letter-spacing:2px; transition:color 0.4s; }
+.coin-name   { font-family:'Rajdhani',sans-serif; font-size:12px; color:var(--muted); letter-spacing:3px; text-transform:uppercase; margin-top:2px; }
+
+.balance-block { text-align:right; }
+.bal-price-small { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:1px; }
+.bal-amount      { font-family:'Orbitron',monospace; font-size:34px; font-weight:700; color:var(--text); line-height:1; margin:3px 0; letter-spacing:-1px; }
+.bal-usd         { font-family:'Share Tech Mono',monospace; font-size:13px; letter-spacing:1px; transition:color 0.4s; }
+
+/* Bottom */
+.card-bottom { display:flex; justify-content:space-between; align-items:flex-end; }
+.sparkline { display:flex; align-items:flex-end; gap:3px; height:28px; }
+.bar { width:3px; border-radius:2px; transition:background 0.5s, box-shadow 0.5s, height 0.8s ease; }
+.bar.last { }
+.brand { font-family:'Orbitron',monospace; font-size:11px; font-weight:700; color:rgba(255,255,255,0.18); text-align:right; line-height:1.3; letter-spacing:2px; }
+
+/* === TX OVERLAY === */
+.tx-overlay {
+  position:absolute; inset:0; border-radius:24px;
+  background:linear-gradient(140deg, #040e08, #060f06);
+  border:1px solid rgba(34,197,94,0.35);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  z-index:10; opacity:0; pointer-events:none; transition:opacity 0.4s;
+  box-shadow:0 0 50px rgba(34,197,94,0.15), 0 50px 100px rgba(0,0,0,0.9);
+}
+.tx-overlay.active { opacity:1; pointer-events:all; }
+.tx-check {
+  width:62px; height:62px; border-radius:50%; border:2px solid var(--green);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 30px var(--green-glow);
+  position:relative; animation:checkpop 0.5s ease 0.15s both;
+}
+@keyframes checkpop { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+.tx-check svg { width:26px; height:26px; stroke:var(--green); fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+.tx-check::after {
+  content:''; position:absolute; inset:-10px; border-radius:50%;
+  border:1px solid rgba(34,197,94,0.3);
+  animation:ringout 1.4s ease infinite;
+}
+@keyframes ringout { 0%{transform:scale(1);opacity:0.7} 100%{transform:scale(1.6);opacity:0} }
+.tx-label    { font-family:'Orbitron',monospace; font-size:15px; font-weight:600; color:var(--green); letter-spacing:1px; text-align:center; line-height:1.4; animation:fup 0.4s ease 0.45s both; }
+.tx-amounts  { text-align:center; animation:fup 0.4s ease 0.6s both; }
+.tx-coin-amt { font-family:'Orbitron',monospace; font-size:28px; font-weight:700; color:var(--text); }
+.tx-usd-amt  { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--green); margin-top:4px; }
+@keyframes fup { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+/* === CHAIN SWITCHER === */
+.chain-switcher {
+  display:flex; gap:8px; margin-top:18px; justify-content:center;
+}
+.chain-btn {
+  display:flex; align-items:center; gap:7px;
+  font-family:'Orbitron',monospace; font-size:10px; font-weight:600; letter-spacing:1.5px;
+  padding:9px 16px; border-radius:12px; border:1px solid rgba(255,255,255,0.08);
+  background:rgba(255,255,255,0.03); color:var(--muted);
+  cursor:pointer; transition:all 0.25s ease; position:relative; overflow:hidden;
+}
+.chain-btn::before {
+  content:''; position:absolute; inset:0; opacity:0;
+  transition:opacity 0.3s;
+}
+.chain-btn:hover { color:var(--muted2); border-color:rgba(255,255,255,0.15); }
+.chain-btn.active { color:var(--text); }
+.chain-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* === ACTION BUTTONS === */
+.action-row { display:flex; gap:10px; margin-top:10px; justify-content:center; }
+.btn {
+  font-family:'Orbitron',monospace; font-size:10px; font-weight:600;
+  letter-spacing:2px; padding:11px 20px; border-radius:10px;
+  cursor:pointer; border:none; transition:all 0.2s; text-transform:uppercase;
+  position:relative; overflow:hidden;
+}
+.btn:active { transform:scale(0.97); }
+.btn-send {
+  background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.35);
+  color:#93c5fd; box-shadow:0 0 20px rgba(59,130,246,0.1);
+}
+.btn-send:hover { background:rgba(59,130,246,0.22); box-shadow:0 0 30px rgba(59,130,246,0.25); }
+.btn-recv {
+  background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.3);
+  color:#86efac; box-shadow:0 0 20px rgba(34,197,94,0.08);
+}
+.btn-recv:hover { background:rgba(34,197,94,0.18); box-shadow:0 0 30px rgba(34,197,94,0.2); }
+
+/* === TICKER === */
+.ticker {
+  margin-top:14px; text-align:center;
+  font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--muted); letter-spacing:2px;
+}
+.ticker-price { font-size:14px; margin:0 6px; font-weight:700; transition:color 0.4s; }
+.ticker-change { font-size:11px; }
+
+/* ===================== SETTINGS PANEL ===================== */
+.settings-panel {
+  width:440px; display:none; flex-direction:column; gap:0;
+}
+.settings-panel.visible { display:flex; }
+
+.settings-header {
+  font-family:'Orbitron',monospace; font-size:11px; font-weight:600;
+  letter-spacing:3px; color:var(--muted); text-transform:uppercase;
+  padding: 0 0 14px 2px; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:4px;
+}
+
+.settings-section {
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius:16px; overflow:hidden; margin-top:10px;
+  background:rgba(255,255,255,0.015);
+}
+
+.settings-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.04);
+  transition:background 0.2s;
+}
+.settings-row:last-child { border-bottom:none; }
+.settings-row:hover { background:rgba(255,255,255,0.03); }
+
+.sr-left { display:flex; align-items:center; gap:12px; }
+.sr-icon {
+  width:32px; height:32px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px;
+}
+.sr-label  { font-family:'Rajdhani',sans-serif; font-size:15px; font-weight:600; color:var(--text); letter-spacing:0.5px; }
+.sr-sub    { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:1px; margin-top:1px; }
+
+/* Toggle */
+.toggle {
+  width:42px; height:24px; border-radius:12px; position:relative; cursor:pointer;
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1);
+  transition:background 0.3s, border-color 0.3s;
+  flex-shrink:0;
+}
+.toggle.on { background:var(--accent); border-color:var(--accent); }
+.toggle::after {
+  content:''; position:absolute; top:3px; left:3px;
+  width:16px; height:16px; border-radius:50%; background:#fff;
+  transition:transform 0.3s, box-shadow 0.3s; box-shadow:0 1px 4px rgba(0,0,0,0.4);
+}
+.toggle.on::after { transform:translateX(18px); box-shadow:0 1px 4px rgba(0,0,0,0.4), 0 0 8px rgba(255,255,255,0.3); }
+
+/* Select */
+.sr-select {
+  font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--muted2);
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px; padding:6px 10px; cursor:pointer; outline:none;
+  appearance:none; letter-spacing:1px;
+}
+
+/* Wallet addresses */
+.wallet-addr {
+  font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--muted);
+  letter-spacing:0.5px; background:rgba(255,255,255,0.04); border-radius:8px;
+  padding:5px 10px; cursor:pointer; transition:all 0.2s; max-width:160px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  border:1px solid rgba(255,255,255,0.07);
+}
+.wallet-addr:hover { color:var(--muted2); background:rgba(255,255,255,0.07); }
+
+/* Section divider label */
+.section-label {
+  font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--muted);
+  letter-spacing:2px; text-transform:uppercase; padding:14px 18px 4px;
+  opacity:0.6;
+}
+
+/* Danger row */
+.settings-row.danger .sr-label { color:#f87171; }
+.settings-row.danger .sr-icon { background:rgba(248,113,113,0.1); }
+
+/* ===== ABOUT ROW ===== */
+.about-row {
+  margin-top:14px;
+  display:flex; justify-content:center; align-items:center; gap:16px;
+  font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--muted);
+  letter-spacing:1.5px;
+}
+.about-row span { cursor:pointer; transition:color 0.2s; }
+.about-row span:hover { color:var(--muted2); }
+.about-dot { width:3px; height:3px; border-radius:50%; background:var(--muted); opacity:0.4; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- NAV TABS -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-wallet" onclick="switchTab('wallet')">WALLET</button>
+    <button class="nav-tab" id="tab-settings" onclick="switchTab('settings')">SETTINGS</button>
+  </div>
+
+  <!-- ===== WALLET VIEW ===== -->
+  <div id="view-wallet">
+    <div class="scene">
+      <div class="card" id="card">
+        <div class="card-inner" id="cardInner">
+          <div class="card-grid"></div>
+          <div class="corner-accent" id="cornerAccent"></div>
+          <div class="nfc-flash" id="nfcFlash"></div>
+
+          <!-- NFC Rings -->
+          <div class="nfc-rings">
+            <svg width="40" height="40" viewBox="0 0 40 40">
+              <circle cx="20" cy="20" r="8" stroke="white" stroke-width="1.5" fill="none"/>
+              <circle cx="20" cy="20" r="14" stroke="white" stroke-width="1" fill="none"/>
+              <circle cx="20" cy="20" r="19" stroke="white" stroke-width="0.6" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Main view -->
+          <div class="card-content" id="mainView">
+            <div class="card-top">
+              <div>
+                <div class="owner-label">Card Owner</div>
+                <div class="owner-name">ISKANDER UTEBAYEV</div>
+              </div>
+              <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+            </div>
+            <div class="card-middle">
+              <div class="coin-block">
+                <div class="coin-icon" id="coinIcon">₿</div>
+                <div>
+                  <div class="coin-ticker" id="coinTicker">BTC</div>
+                  <div class="coin-name" id="coinName">Bitcoin</div>
+                </div>
+              </div>
+              <div class="balance-block">
+                <div class="bal-price-small" id="balPriceSmall">$119,700.09</div>
+                <div class="bal-amount" id="balAmount">86.24</div>
+                <div class="bal-usd" id="balUsd">$ 10,230,362.20</div>
+              </div>
+            </div>
+            <div class="card-bottom">
+              <div class="sparkline" id="sparkline"></div>
+              <div class="brand">PRINT<br>WORLD</div>
+            </div>
+          </div>
+
+          <!-- TX Overlay -->
+          <div class="tx-overlay" id="txOverlay">
+            <div class="tx-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div class="tx-label">Transaction<br>Complete</div>
+            <div class="tx-amounts">
+              <div class="tx-coin-amt" id="txCoinAmt">61.62 BTC</div>
+              <div class="tx-usd-amt" id="txUsdAmt">$ 7,506,274.20</div>
+            </div>
+            <div class="brand" style="opacity:0.25;margin-top:6px;">PRINT WORLD</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chain Switcher -->
+    <div class="chain-switcher">
+      <button class="chain-btn active" id="chain-btc" onclick="switchChain('btc')">
+        <span class="chain-dot" style="background:#f59e0b;box-shadow:0 0 6px rgba(245,158,11,0.8)"></span>BTC
+      </button>
+      <button class="chain-btn" id="chain-sol" onclick="switchChain('sol')">
+        <span class="chain-dot" style="background:#9945ff;box-shadow:0 0 6px rgba(153,69,255,0.8)"></span>SOL
+      </button>
+      <button class="chain-btn" id="chain-base" onclick="switchChain('base')">
+        <span class="chain-dot" style="background:#0052ff;box-shadow:0 0 6px rgba(0,82,255,0.8)"></span>BASE
+      </button>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-row">
+      <button class="btn btn-send" onclick="simulateTx('send')">⬆ SEND</button>
+      <button class="btn btn-recv" onclick="simulateTx('recv')">⬇ RECEIVE</button>
+    </div>
+
+    <!-- Ticker -->
+    <div class="ticker">
+      <span id="tickerPair">BTC/USD</span>
+      <span class="ticker-price" id="tickerPrice">$119,700</span>
+      <span class="ticker-change" id="tickerChange">▲ +2.34%</span>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS VIEW ===== -->
+  <div id="view-settings" class="settings-panel">
+    <div class="settings-header">Settings</div>
+
+    <!-- Card section -->
+    <div class="settings-section">
+      <div class="section-label">Card</div>
+      <div class="settings-row">
+        <div class="sr-left">
+          <div class="sr-icon" style="background:rgba(59,130,246,0.1); color:#93c5fd;">💳</div>
+          <div>
+            <div class="sr-label">Card Name</div>
+            <div class="sr-sub">ISKANDER UTEBAYEV</div>
+          </div>
+        </div>
+        <div style="color:var(--muted);font-size:18px;">›</div>
+      </div>
+      <div class="settings-row">
+        <div class="sr-left">
+          <div class="sr-icon" style="background:rgba(245,158,11,0.1); color:#fcd34d;">🔔</div>
+          <div>
+            <div class="sr-label">Transaction Alerts</div>
+            <div class="sr-sub">PUSH NOTIFICATIONS</div>
+          </div>
+        </div>
+        <div class="toggle on" id="toggle-notif" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="settings-row">
+        <div class="sr-left">
+          <div class="sr-icon" style="background:rgba(34,197,94,0.1); color:#86efac;">📶</div>
+          <div>
+            <div class="sr-label">NFC Payments</div>
+            <div class="sr-sub">TAP TO PAY</div>
+          </div>
+        </div>
+        <div class="toggle on" id="toggle-nfc" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="settings-row">
+        <div class="sr-left">
+          <div class="sr-icon" style="background:rgba(139,92,246,0.1); color:#c4b5fd;">🔒</div>
+          <div>
+            <div class="sr-label">Spending Limit</div>
+            <div class="sr-sub">PER TRANSACTION</div>
+          </div>
+        </div>
+        <select class="sr-select">
+          <option>0.5 BTC</option>
+          <option>1 BTC</option>
+          <option selected>5 BTC</option>
+          <option>NO LIMIT</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Wallets section -->
+    <div class="settings-section">
+      <div class="section-label">Wallets</div>
+      <div class="settings-row">
+        <div class="sr-left">
+          <div class="sr-icon" style="background:rgba(59,130,246,0.12);">₿</div>
+          <div>
+            <div class="sr-label" style="color:#93c5fd;">Bitcoin</div>
+            <div class="sr-sub">BTC MAINNET</div>
+          </div>
+        </div>
+        <div class="wallet-addr" onclick="copyAddr(this,'1A1zP1...Gpty')" title="Click to copy">1A1zP1...Gpty</div>
+      </div>
+      <div class="settings-row">
+        <div class="sr-left">
+          <div class="sr-icon" style="background:rgba(153,69,255,0.12);">◎</div>
+          <div>
+            <div class="sr-label" style="color:#c4b5fd;">Solana</div>
+            <div class="sr-sub">SOL MAINNET</div>
+          </div>
+        </div>
+        <div class="wallet-addr" onclick="copyAddr(this,'9xQeW6...3kNa')" title="Click to copy">9xQeW6...3kNa</div>
+      </div>
+      <div class="settings-row">
+        <div class="sr-left">
+          <div class="sr-icon" style="background:rgba(0,82,255,0.12);">🔵</div>
+          <div>
+            <div class="sr-label" style="color:#93c5fd;">Base</div>
+            <div class="sr-sub">BASE L2</div>
+          </div>
+        </div>
+        <div class="wallet-addr" onclick="copyAddr(this,'0x71C7...9e6b')" title="Click to copy">0x71C7...9e6b</div>
+      </div>
+    </div>
+
+    <!-- Security section -->
+    <div class="settings-section">
+      <div class="section-label">Security</div>
+      <div class="settings-row">
+        <div class="sr-left">
+          <div class="sr-icon" style="background:rgba(34,197,94,0.1); color:#86efac;">🛡️</div>
+          <div>
+            <div class="sr-label">Biometric Auth</div>
+            <div class="sr-sub">FACE ID / FINGERPRINT</div>
+          </div>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="settings-row">
+        <div class="sr-left">
+          <div class="sr-icon" style="background:rgba(245,158,11,0.1); color:#fcd34d;">🔑</div>
+          <div>
+            <div class="sr-label">Backup Seed</div>
+            <div class="sr-sub">12-WORD PHRASE</div>
+          </div>
+        </div>
+        <div style="color:var(--muted);font-size:18px;">›</div>
+      </div>
+      <div class="settings-row danger" onclick="">
+        <div class="sr-left">
+          <div class="sr-icon">🗑️</div>
+          <div>
+            <div class="sr-label">Reset Card</div>
+            <div class="sr-sub">WIPE ALL DATA</div>
+          </div>
+        </div>
+        <div style="color:#f87171;font-size:18px;">›</div>
+      </div>
+    </div>
+
+    <!-- Version -->
+    <div class="about-row">
+      <span>PRINT WORLD</span>
+      <div class="about-dot"></div>
+      <span>v2.4.1</span>
+      <div class="about-dot"></div>
+      <span>Privacy</span>
+      <div class="about-dot"></div>
+      <span>Support</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---- CHAINS CONFIG ----
+const chains = {
+  btc: {
+    ticker:'BTC', name:'Bitcoin', icon:'₿',
+    color:'#f59e0b', glow:'rgba(245,158,11,0.45)',
+    price: 119700, balance: 86.24,
+    pair:'BTC/USD', symbol:'$',
+    bars:[8,14,10,18,12,22,16,20,24,18,26,20,28]
+  },
+  sol: {
+    ticker:'SOL', name:'Solana', icon:'◎',
+    color:'#9945ff', glow:'rgba(153,69,255,0.45)',
+    price: 168.40, balance: 4821.5,
+    pair:'SOL/USD', symbol:'$',
+    bars:[10,8,16,12,20,14,18,22,16,24,20,26,22]
+  },
+  base: {
+    ticker:'ETH', name:'Base (ETH)', icon:'Ξ',
+    color:'#0052ff', glow:'rgba(0,82,255,0.45)',
+    price: 2840.20, balance: 312.88,
+    pair:'ETH/USD', symbol:'$',
+    bars:[12,18,10,22,16,14,20,18,24,16,22,20,26]
+  }
+};
+
+let currentChain = 'btc';
+let livePrice = chains.btc.price;
+
+// ---- SPARKLINE INIT ----
+function buildSparkline(chain) {
+  const el = document.getElementById('sparkline');
+  el.innerHTML = '';
+  const c = chains[chain];
+  c.bars.forEach((h, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'bar' + (i === c.bars.length-1 ? ' last':'');
+    bar.style.height = h+'px';
+    bar.style.background = i === c.bars.length-1 ? c.color : c.color+'66';
+    if (i === c.bars.length-1) bar.style.boxShadow = `0 0 6px ${c.color}`;
+    el.appendChild(bar);
+  });
+}
+buildSparkline('btc');
+
+// ---- CHAIN SWITCH ----
+function switchChain(chain) {
+  if (chain === currentChain) return;
+  currentChain = chain;
+  const c = chains[chain];
+  livePrice = c.price;
+
+  // Update chain btn active
+  document.querySelectorAll('.chain-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('chain-'+chain).classList.add('active');
+
+  // Update card colors
+  const inner = document.getElementById('cardInner');
+  inner.style.borderColor = c.color+'44';
+  inner.style.boxShadow = `0 0 0 1px ${c.color}20, 0 0 50px ${c.color}22, inset 0 1px 0 rgba(255,255,255,0.04), 0 50px 100px rgba(0,0,0,0.9)`;
+  document.getElementById('cornerAccent').style.background = `radial-gradient(circle at 0 0, ${c.color}18, transparent 70%)`;
+  document.getElementById('nfcFlash').style.background = `radial-gradient(circle at center, ${c.color}55, transparent 70%)`;
+
+  // Update coin display
+  document.getElementById('coinIcon').style.background = `radial-gradient(circle, ${c.color}44, ${c.color}0d)`;
+  document.getElementById('coinIcon').style.borderColor = c.color+'88';
+  document.getElementById('coinIcon').style.boxShadow = `0 0 22px ${c.glow}, inset 0 0 10px ${c.color}1a`;
+  document.getElementById('coinIcon').style.color = c.color;
+  document.getElementById('coinIcon').textContent = c.icon;
+  document.getElementById('coinTicker').textContent = c.ticker;
+  document.getElementById('coinTicker').style.color = c.color;
+  document.getElementById('coinName').textContent = c.name;
+
+  // Update balances
+  updateBalanceDisplay(chain, livePrice);
+  buildSparkline(chain);
+
+  // Update ticker
+  document.getElementById('tickerPair').textContent = c.pair;
+  document.getElementById('tickerPrice').style.color = c.color;
+
+  // NFC flash
+  triggerNFC();
+
+  // Chain btn active style
+  document.getElementById('chain-'+chain).style.borderColor = c.color+'55';
+  document.getElementById('chain-'+chain).style.color = c.color;
+  document.getElementById('chain-'+chain).style.background = c.color+'18';
+  document.getElementById('chain-'+chain).style.boxShadow = `0 0 18px ${c.color}22`;
+
+  // Reset other btns
+  ['btc','sol','base'].filter(k=>k!==chain).forEach(k => {
+    const btn = document.getElementById('chain-'+k);
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.style.background = '';
+    btn.style.boxShadow = '';
+  });
+}
+
+function updateBalanceDisplay(chain, price) {
+  const c = chains[chain];
+  const usd = (c.balance * price).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('balPriceSmall').textContent = '$'+price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('balAmount').textContent = c.balance.toLocaleString('en-US',{maximumFractionDigits:4});
+  document.getElementById('balUsd').textContent = '$ '+usd;
+  document.getElementById('balUsd').style.color = chains[chain].color;
+}
+
+// ---- LIVE PRICE SIM ----
+setInterval(() => {
+  const c = chains[currentChain];
+  livePrice += (Math.random()-0.48) * (c.price * 0.0015);
+  livePrice = Math.max(c.price*0.97, Math.min(c.price*1.03, livePrice));
+  const change = ((livePrice - c.price*0.98) / (c.price*0.98) * 100).toFixed(2);
+  document.getElementById('tickerPrice').textContent = '$'+Math.round(livePrice).toLocaleString();
+  document.getElementById('tickerChange').textContent = (change>=0?'▲ +':'▼ ')+change+'%';
+  document.getElementById('tickerChange').style.color = change>=0 ? '#22c55e':'#ef4444';
+  document.getElementById('balPriceSmall').textContent = '$'+livePrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const usd = (chains[currentChain].balance * livePrice).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('balUsd').textContent = '$ '+usd;
+}, 2200);
+
+// ---- TX SIMULATION ----
+function simulateTx(type) {
+  triggerNFC();
+  setTimeout(() => {
+    const c = chains[currentChain];
+    const amt = (Math.random()*5+0.1).toFixed(4);
+    const usd = (amt * livePrice).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    document.getElementById('txCoinAmt').textContent = (type==='recv'?'+':'')+amt+' '+c.ticker;
+    document.getElementById('txUsdAmt').textContent = '$ '+usd;
+    document.getElementById('txOverlay').classList.add('active');
+    setTimeout(() => document.getElementById('txOverlay').classList.remove('active'), 2600);
+  }, 350);
+}
+
+// ---- NFC FLASH ----
+function triggerNFC() {
+  const el = document.getElementById('nfcFlash');
+  el.style.background = `radial-gradient(circle at center, ${chains[currentChain].color}55, transparent 70%)`;
+  el.className = 'nfc-flash';
+  requestAnimationFrame(() => {
+    el.className = 'nfc-flash flash';
+  });
+  setTimeout(() => el.className = 'nfc-flash', 750);
+}
+
+// ---- CARD 3D TILT ----
+const card = document.getElementById('card');
+document.addEventListener('mousemove', e => {
+  const r = card.getBoundingClientRect();
+  const cx = r.left+r.width/2, cy = r.top+r.height/2;
+  const dx = (e.clientX-cx)/22, dy = (e.clientY-cy)/22;
+  card.style.animation = 'none';
+  card.style.transform = `rotateY(${dx}deg) rotateX(${-dy}deg)`;
+});
+document.addEventListener('mouseleave', () => { card.style.animation = 'float 6s ease-in-out infinite'; });
+
+// Card click = tx
+document.getElementById('cardInner').addEventListener('click', () => simulateTx('send'));
+
+// ---- TAB SWITCHING ----
+function switchTab(tab) {
+  document.getElementById('tab-wallet').classList.toggle('active', tab==='wallet');
+  document.getElementById('tab-settings').classList.toggle('active', tab==='settings');
+  document.getElementById('view-wallet').style.display = tab==='wallet' ? 'block':'none';
+  const sp = document.getElementById('view-settings');
+  sp.style.display = tab==='settings' ? 'flex':'none';
+}
+
+// ---- COPY ADDR ----
+function copyAddr(el, addr) {
+  const orig = el.textContent;
+  el.textContent = 'COPIED ✓';
+  el.style.color = '#22c55e';
+  setTimeout(() => { el.textContent = orig; el.style.color=''; }, 1500);
+}
+
+// Init colors
+document.getElementById('coinIcon').style.background = 'radial-gradient(circle, rgba(59,130,246,0.3), rgba(59,130,246,0.05))';
+document.getElementById('coinIcon').style.borderColor = 'rgba(59,130,246,0.5)';
+document.getElementById('coinIcon').style.boxShadow = '0 0 22px rgba(59,130,246,0.45), inset 0 0 10px rgba(59,130,246,0.1)';
+document.getElementById('coinTicker').style.color = '#3b82f6';
+document.getElementById('balUsd').style.color = '#3b82f6';
+document.getElementById('tickerPrice').style.color = '#3b82f6';
+document.getElementById('nfcFlash').style.background = 'radial-gradient(circle at center, rgba(59,130,246,0.55), transparent 70%)';
+document.getElementById('chain-btc').style.borderColor = 'rgba(59,130,246,0.55)';
+document.getElementById('chain-btc').style.color = '#f59e0b';
+document.getElementById('chain-btc').style.background = 'rgba(59,130,246,0.18)';
+</script>
+</body>
+</html>

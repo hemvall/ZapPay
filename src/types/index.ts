@@ -12,6 +12,7 @@ export interface Payment {
   status: string
   txHash: string | null
   payer: string | null
+  expiresAt: string | null
   createdAt: string
   updatedAt: string
 }
