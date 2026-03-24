@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Copy, Check, QrCode, Share2, ArrowLeft, Shield, Loader2 } from 'lucide-react'
-import { Wallet, Copy, Check, QrCode, Share2, ArrowLeft, Zap, Shield, Loader2, LayoutDashboard } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import type { Crypto, Network } from '../types'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 import { useAccount, useDisconnect } from 'wagmi'
-import WalletPicker from '../components/WalletPicker'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
 
@@ -19,7 +16,7 @@ const CRYPTOS: { id: Crypto; icon: string; logo: string; color: string }[] = [
 ]
 
 const NETWORKS: { id: Network; label: string; logo: string; sub: string }[] = [
-  { id: 'Sepolia', label: 'Sepolia', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', sub: 'Testnet' },
+  { id: 'Sepolia', label: 'Sepolia', logo: 'https://rpc.info/logos/ethereum.png', sub: 'Testnet' },
   { id: 'Base', label: 'Base', logo: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png', sub: 'Fast & cheap' },
   { id: 'Ethereum', label: 'Ethereum', logo: 'https://api.phantom.app/image-proxy/?image=https%3A%2F%2Fcdn.jsdelivr.net%2Fgh%2Ftrustwallet%2Fassets%40master%2Fblockchains%2Fethereum%2Fassets%2F0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2%2Flogo.png&anim=false&fit=cover&width=160&height=160', sub: 'Mainnet' },
 ]
@@ -128,15 +125,7 @@ export default function Home() {
     return (
       <div className="hero">
         <BgElements />
-        <div className="hero-content">
-          {/* Logo centered */}
-          <div className="logo-center">
-            <div className="logo-wrap">
-              <div className="logo-glow" />
-              <img src="/thunder.png" alt="" className="logo-img" />
-            </div>
-            <div className="brand-logo">Zap<span>Pay</span></div>
-          </div>
+        <div className="hero-content dashboard">
 
           <div className="form-card fade-up">
             <div className="card-top">
@@ -200,8 +189,7 @@ export default function Home() {
   return (
     <div className="hero">
       <BgElements />
-      <div className="hero-content">
-        {/* Logo centered */}
+      <div className="hero-content dashboard">
         <div className="logo-center">
           <div className="logo-wrap">
             <div className="logo-glow" />
@@ -228,16 +216,19 @@ export default function Home() {
           {/* Wallet / Address */}
           <div className="field">
             <div className="field-label">Receive to</div>
-            <WalletPicker />
-            <div className="field-or">or</div>
-            <input
-              className="input mono"
-              placeholder="0x... paste address"
-              value={walletConnected ? (walletAddress || '') : manualAddress}
-              onChange={(e) => { setManualAddress(e.target.value); if (walletConnected) disconnect() }}
-              disabled={walletConnected}
-              style={walletConnected ? { opacity: 0.4 } : {}}
-            />
+            {walletConnected ? (
+              <div className="input mono" style={{ opacity: 0.7, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', flexShrink: 0 }} />
+                {walletAddress}
+              </div>
+            ) : (
+              <input
+                className="input mono"
+                placeholder="0x... paste address or connect wallet above"
+                value={manualAddress}
+                onChange={(e) => setManualAddress(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Token + Network */}
@@ -317,13 +308,7 @@ export default function Home() {
             {loading ? <><Loader2 size={15} className="spin" /> Creating...</> : <><QrCode size={15} /> Generate payment link</>}
           </button>
         </div>
-
-        <div className="text-c" style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <Link to="/dashboard" className="btn-ghost" style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <LayoutDashboard size={16} /> View Dashboard
-          </Link>
-          <p className="text-xs dim">No account needed. No data stored. Just crypto.</p>
-        </div>
+          <br />
       </div>
     </div>
   )

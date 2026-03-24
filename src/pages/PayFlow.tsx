@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
-import { Check, Shield, ArrowRight, ExternalLink, Loader2 } from 'lucide-react'
+import { useParams, Link } from 'react-router-dom'
+import { Check, Shield, ArrowRight, ExternalLink, Loader2, Wallet } from 'lucide-react'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 import { estimateFees } from '../hooks/estimateFees'
 import {
@@ -11,7 +11,7 @@ import {
   useSwitchChain,
 } from 'wagmi'
 import { parseEther, parseUnits, erc20Abi, type Hex } from 'viem'
-import WalletPicker from '../components/WalletPicker'
+import ExpirationCountdown from '../components/ExpirationCountdown'
 import { TOKEN_ADDRESSES, TOKEN_DECIMALS, NETWORK_CHAIN_IDS, ZAPPAY_TREASURY } from '../lib/tokens'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
@@ -37,7 +37,7 @@ function BgElements() {
 const NETWORK_LOGOS: Record<string, string> = {
   ethereum: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
   base: 'https://assets-cdn.trustwallet.com/blockchains/base/info/logo.png',
-  sepolia: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg',
+  sepolia: 'https://rpc.info/logos/ethereum.png',
 }
 
 function getNetworkLogo(network: string): string | null {
@@ -89,6 +89,7 @@ interface PaymentData {
   status: string
   txHash: string | null
   payer: string | null
+  expiresAt: string | null
 }
 
 export default function PayFlow() {
@@ -102,6 +103,16 @@ export default function PayFlow() {
   const [confirmationStatus, setConfirmationStatus] = useState<string | null>(null)
 
   const { ethPrice } = useEthPrice()
+
+  const handleExpired = () => {
+    fetch(`${API_URL}/payments/${id}`)
+      .then(r => r.json())
+      .then(d => {
+        setPaymentData(d)
+        if (d.status === 'EXPIRED') setStep('summary')
+      })
+      .catch(() => {})
+  }
 
   // wagmi hooks
   const { address, isConnected, chainId } = useAccount()
@@ -160,7 +171,7 @@ export default function PayFlow() {
 
     setConfirmedTxHash(txHash)
 
-    fetch(`${API_URL}/payments/${paymentData.id}`, {
+    fetch(`${API_URL}/payments/${paymentData.id}/submit`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ txHash, payer: address }),
@@ -350,7 +361,10 @@ export default function PayFlow() {
                 <ExternalLink size={14} /> View on explorer
               </a>
             )}
-            <p className="text-xs dim mt-16">Recipient has been notified. You can close this page.</p>
+            <Link to="/dashboard" className="btn-ghost mt-12" style={{ justifyContent: 'center', textDecoration: 'none' }}>
+              Go to Dashboard
+            </Link>
+            <p className="text-xs dim mt-16">Recipient has been notified.</p>
           </div>
         </div>
       </div>
@@ -370,6 +384,11 @@ export default function PayFlow() {
             <div className="ring-spinner" />
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Processing transaction</h2>
             <p className="text-s muted">Confirming on {paymentData.network}...</p>
+
+            <ExpirationCountdown
+              expiresAt={paymentData.expiresAt}
+              onExpired={handleExpired}
+            />
 
             <div className="step-list">
               {[
@@ -439,6 +458,11 @@ export default function PayFlow() {
             </p>
           </div>
 
+          <ExpirationCountdown
+            expiresAt={paymentData.expiresAt}
+            onExpired={handleExpired}
+          />
+
           <div style={{ padding: '16px 0' }}>
             <div className="sum-row">
               <span className="sum-label">Amount</span>
@@ -470,7 +494,10 @@ export default function PayFlow() {
             </div>
           ) : !isConnected ? (
             <div className="mt-8">
-              <WalletPicker compact />
+              <div className="connect-hint">
+                <Wallet size={16} />
+                <span>Use the <strong>Connect Wallet</strong> button in the navigation bar</span>
+              </div>
             </div>
           ) : needsChainSwitch ? (
             <button className="btn-primary mt-8" onClick={() => switchChain({ chainId: targetChainId })}>
@@ -483,12 +510,6 @@ export default function PayFlow() {
               {isEth && ethPrice && <span className="text-xs" style={{ opacity: 0.7, marginLeft: 4 }}>({formatUsd(total, ethPrice)})</span>}
               {' '}<ArrowRight size={15} />
             </button>
-          )}
-
-          {isConnected && (
-            <div className="mt-8">
-              <WalletPicker />
-            </div>
           )}
 
           <p className="text-xs dim text-c mt-16">

@@ -106,7 +106,7 @@ module.exports = {
                 description: 'Returns all payments where the given address is either the recipient or the payer.',
                 parameters: [
                     { name: 'address', in: 'path', required: true, schema: { type: 'string', pattern: '^0x[a-fA-F0-9]{40}$' }, description: 'Ethereum wallet address' },
-                    { name: 'status', in: 'query', required: false, schema: { type: 'string', enum: ['CREATED', 'PENDING', 'CONFIRMED', 'FAILED'] }, description: 'Filter by payment status' }
+                    { name: 'status', in: 'query', required: false, schema: { type: 'string', enum: ['CREATED', 'PENDING', 'CONFIRMED', 'FAILED', 'EXPIRED'] }, description: 'Filter by payment status' }
                 ],
                 responses: {
                     '200': {
@@ -199,7 +199,7 @@ module.exports = {
                             schema: {
                                 type: 'object',
                                 properties: {
-                                    status: { type: 'string', enum: ['CREATED', 'PENDING', 'CONFIRMED', 'FAILED'], description: 'New payment status' },
+                                    status: { type: 'string', enum: ['CREATED', 'PENDING', 'CONFIRMED', 'FAILED', 'EXPIRED'], description: 'New payment status' },
                                     txHash: { type: 'string', description: 'Transaction hash' },
                                     payer: { type: 'string', description: 'Payer wallet address' }
                                 }
@@ -226,6 +226,72 @@ module.exports = {
                     },
                     '404': {
                         description: 'Payment not found',
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/Error' }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        '/payments/{id}/submit': {
+            patch: {
+                summary: 'Submit a transaction for a payment',
+                tags: ['Payer'],
+                description: 'Payer submits a txHash after sending the on-chain transaction. Sets status to PENDING, then waits for on-chain confirmation and updates to CONFIRMED or FAILED.',
+                parameters: [
+                    { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                properties: {
+                                    txHash: { type: 'string', description: 'On-chain transaction hash' },
+                                    payer: { type: 'string', description: 'Payer wallet address' }
+                                },
+                                required: ['txHash', 'payer']
+                            }
+                        }
+                    }
+                },
+                responses: {
+                    '200': {
+                        description: 'Confirmation result',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        status: { type: 'string', enum: ['CONFIRMED', 'FAILED', 'PENDING'] },
+                                        txHash: { type: 'string' },
+                                        error: { type: 'string', nullable: true }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    '400': {
+                        description: 'Missing required fields',
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/Error' }
+                            }
+                        }
+                    },
+                    '404': {
+                        description: 'Payment not found',
+                        content: {
+                            'application/json': {
+                                schema: { $ref: '#/components/schemas/Error' }
+                            }
+                        }
+                    },
+                    '409': {
+                        description: 'Payment is not in CREATED state',
                         content: {
                             'application/json': {
                                 schema: { $ref: '#/components/schemas/Error' }
@@ -276,7 +342,7 @@ module.exports = {
                     recipientAddress: { type: 'string' },
                     label: { type: 'string', nullable: true },
                     merchantName: { type: 'string', nullable: true },
-                    status: { type: 'string', enum: ['CREATED', 'PENDING', 'CONFIRMED', 'FAILED'] },
+                    status: { type: 'string', enum: ['CREATED', 'PENDING', 'CONFIRMED', 'FAILED', 'EXPIRED'] },
                     txHash: { type: 'string', nullable: true },
                     payer: { type: 'string', nullable: true },
                     createdAt: { type: 'string', format: 'date-time' },

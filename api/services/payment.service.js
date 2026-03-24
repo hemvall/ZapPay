@@ -7,8 +7,9 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const PAYMENT_TTL_MINUTES = Number(process.env.PAYMENT_TTL_MINUTES || 30);
 
 async function createPayment({ amount, token, network, recipientAddress, label, merchantName }) {
+  const expiresAt = new Date(Date.now() + PAYMENT_TTL_MINUTES * 60 * 1000);
   const payment = await prisma.payment.create({
-    data: { amount, token, network, recipientAddress, label, merchantName },
+    data: { amount, token, network, recipientAddress, label, merchantName, expiresAt },
   });
 
   const paymentUrl = `${FRONTEND_URL}/pay/${payment.id}`;
