@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Check, Shield, ArrowRight, ExternalLink, Loader2 } from 'lucide-react'
+import { Check, Shield, ArrowRight, ExternalLink, Loader2, Wallet } from 'lucide-react'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 import { estimateFees } from '../hooks/estimateFees'
 import {
@@ -11,7 +11,6 @@ import {
   useSwitchChain,
 } from 'wagmi'
 import { parseEther, parseUnits, erc20Abi, type Hex } from 'viem'
-import WalletPicker from '../components/WalletPicker'
 import ExpirationCountdown from '../components/ExpirationCountdown'
 import { TOKEN_ADDRESSES, TOKEN_DECIMALS, NETWORK_CHAIN_IDS, ZAPPAY_TREASURY } from '../lib/tokens'
 
@@ -495,7 +494,10 @@ export default function PayFlow() {
             </div>
           ) : !isConnected ? (
             <div className="mt-8">
-              <WalletPicker compact />
+              <div className="connect-hint">
+                <Wallet size={16} />
+                <span>Use the <strong>Connect Wallet</strong> button in the navigation bar</span>
+              </div>
             </div>
           ) : needsChainSwitch ? (
             <button className="btn-primary mt-8" onClick={() => switchChain({ chainId: targetChainId })}>
@@ -508,12 +510,6 @@ export default function PayFlow() {
               {isEth && ethPrice && <span className="text-xs" style={{ opacity: 0.7, marginLeft: 4 }}>({formatUsd(total, ethPrice)})</span>}
               {' '}<ArrowRight size={15} />
             </button>
-          )}
-
-          {isConnected && (
-            <div className="mt-8">
-              <WalletPicker />
-            </div>
           )}
 
           <p className="text-xs dim text-c mt-16">

@@ -6,7 +6,6 @@ import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
 import { useEthPrice, formatUsd } from '../hooks/useEthPrice'
 import { useAccount, useDisconnect } from 'wagmi'
-import WalletPicker from '../components/WalletPicker'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
 
@@ -217,16 +216,19 @@ export default function Home() {
           {/* Wallet / Address */}
           <div className="field">
             <div className="field-label">Receive to</div>
-            <WalletPicker />
-            <div className="field-or">or</div>
-            <input
-              className="input mono"
-              placeholder="0x... paste address"
-              value={walletConnected ? (walletAddress || '') : manualAddress}
-              onChange={(e) => { setManualAddress(e.target.value); if (walletConnected) disconnect() }}
-              disabled={walletConnected}
-              style={walletConnected ? { opacity: 0.4 } : {}}
-            />
+            {walletConnected ? (
+              <div className="input mono" style={{ opacity: 0.7, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', flexShrink: 0 }} />
+                {walletAddress}
+              </div>
+            ) : (
+              <input
+                className="input mono"
+                placeholder="0x... paste address or connect wallet above"
+                value={manualAddress}
+                onChange={(e) => setManualAddress(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Token + Network */}

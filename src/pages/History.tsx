@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Loader2, Download, ExternalLink, Inbox, Filter, Zap } from 'lucide-react'
+import { Loader2, Download, ExternalLink, Inbox, Filter, Zap, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAccount } from 'wagmi'
 import { shortAddr } from '../data/mock'
 import { estimateFees } from '../hooks/estimateFees'
 import { useEthPrice } from '../hooks/useEthPrice'
 import { usePaymentSSE } from '../hooks/usePaymentSSE'
-import WalletPicker from '../components/WalletPicker'
 import type { Payment } from '../types'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4010'
@@ -194,7 +193,10 @@ export default function History() {
           <div className="form-card fade-up text-c">
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Sent Payments</h2>
             <p className="text-xs muted" style={{ marginBottom: 20 }}>Connect your wallet to view your sent transactions</p>
-            <WalletPicker compact />
+            <div className="connect-hint">
+              <Wallet size={16} />
+              <span>Use the <strong>Connect Wallet</strong> button in the navigation bar</span>
+            </div>
             <Link to="/" className="btn-ghost" style={{ marginTop: 14, justifyContent: 'center' }}>
               <Zap size={12} /> Create a payment
             </Link>
@@ -224,7 +226,6 @@ export default function History() {
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>Sent Payments</h2>
               <p className="text-xs muted mono">{shortAddr(address!)}</p>
             </div>
-            <WalletPicker />
           </div>
 
           {/* Summary cards */}

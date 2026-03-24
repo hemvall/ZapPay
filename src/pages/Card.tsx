@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
+import { useAccount, useBalance } from 'wagmi'
+import { base, mainnet } from 'wagmi/chains'
+import { Wallet } from 'lucide-react'
+import { useCryptoPrices } from '../hooks/useCryptoPrices'
 
 // ═══════════════════════════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════════════════════════
-
-const OWNER_NAME = 'Lew'
 
 interface ChainData {
   ticker: string
@@ -18,22 +20,26 @@ interface ChainData {
   bars: number[]
 }
 
-const CHAINS: Record<string, ChainData> = {
+const FALLBACK_CHAINS: Record<string, ChainData> = {
   btc: {
     ticker: 'BTC', name: 'Bitcoin', icon: '₿', color: '#f59e0b',
-    glow: 'rgba(245,158,11,0.45)', price: 119700, balance: 86.24, pair: 'BTC/USD',
+    glow: 'rgba(245,158,11,0.45)', price: 119700, balance: 0, pair: 'BTC/USD',
     bars: [8, 14, 10, 18, 12, 22, 16, 20, 24, 18, 26, 20, 28],
   },
   sol: {
     ticker: 'SOL', name: 'Solana', icon: '◎', color: '#9945ff',
-    glow: 'rgba(153,69,255,0.45)', price: 168.4, balance: 4821.5, pair: 'SOL/USD',
+    glow: 'rgba(153,69,255,0.45)', price: 168.4, balance: 0, pair: 'SOL/USD',
     bars: [10, 8, 16, 12, 20, 14, 18, 22, 16, 24, 20, 26, 22],
   },
   base: {
     ticker: 'ETH', name: 'Base (ETH)', icon: 'Ξ', color: '#0052ff',
-    glow: 'rgba(0,82,255,0.45)', price: 2840.2, balance: 312.88, pair: 'ETH/USD',
+    glow: 'rgba(0,82,255,0.45)', price: 2840.2, balance: 0, pair: 'ETH/USD',
     bars: [12, 18, 10, 22, 16, 14, 20, 18, 24, 16, 22, 20, 26],
   },
+}
+
+function shortAddr(addr: string) {
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
 }
 
 interface WalletData {
@@ -41,12 +47,6 @@ interface WalletData {
   sub: string
   addr: string
   icon: string
-}
-
-const WALLETS: Record<string, WalletData> = {
-  btc: { label: 'Bitcoin', sub: 'BTC MAINNET', addr: '1A1zP1...Gpty', icon: '₿' },
-  sol: { label: 'Solana', sub: 'SOL MAINNET', addr: '9xQeW6...3kNa', icon: '◎' },
-  base: { label: 'Base', sub: 'BASE L2', addr: '0x71C7...9e6b', icon: '🔵' },
 }
 
 const SPENDING_LIMITS = ['0.5 BTC', '1 BTC', '5 BTC', 'NO LIMIT']
@@ -124,8 +124,7 @@ function SettingsRow({ icon, label, labelColor, sub, right }: {
 
 export default function CryptoCard() {
   const [tab, setTab] = useState<'wallet' | 'settings'>('wallet')
-  const [chain, setChain] = useState('btc')
-  const [livePrice, setLivePrice] = useState(CHAINS.btc.price)
+  const [chain, setChain] = useState('base')
   const [nfcFlash, setNfcFlash] = useState(false)
   const [txActive, setTxActive] = useState(false)
   const [txData, setTxData] = useState({ amt: '', usd: '' })
@@ -134,16 +133,63 @@ export default function CryptoCard() {
   const [releasing, setReleasing] = useState(false)
   const [copiedAddr, setCopiedAddr] = useState<string | null>(null)
 
+  // Wallet (from global navbar WalletPicker via wagmi)
+  const { address, isConnected } = useAccount()
+  const { prices } = useCryptoPrices()
+
+  const { data: ethBaseBal } = useBalance({
+    address,
+    chainId: base.id,
+    query: { enabled: isConnected },
+  })
+  const { data: ethMainnetBal } = useBalance({
+    address,
+    chainId: mainnet.id,
+    query: { enabled: isConnected },
+  })
+
+  // Build CHAINS with live prices + balances
+  const CHAINS: Record<string, ChainData> = {
+    btc: {
+      ...FALLBACK_CHAINS.btc,
+      price: prices.btc ?? FALLBACK_CHAINS.btc.price,
+    },
+    sol: {
+      ...FALLBACK_CHAINS.sol,
+      price: prices.sol ?? FALLBACK_CHAINS.sol.price,
+    },
+    base: {
+      ...FALLBACK_CHAINS.base,
+      price: prices.eth ?? FALLBACK_CHAINS.base.price,
+      balance: isConnected && ethBaseBal ? parseFloat(ethBaseBal.formatted) : 0,
+    },
+  }
+
+  // Wallet addresses for settings
+  const WALLETS: Record<string, WalletData> = {
+    base: {
+      label: 'Base', sub: 'BASE L2', icon: '🔵',
+      addr: isConnected && address ? shortAddr(address) : '—',
+    },
+    eth: {
+      label: 'Ethereum', sub: 'ETH MAINNET', icon: 'Ξ',
+      addr: isConnected && address ? shortAddr(address) : '—',
+    },
+  }
+
+  const [livePrice, setLivePrice] = useState(FALLBACK_CHAINS.base.price)
   const livePriceRef = useRef(livePrice)
   const chainRef = useRef(chain)
+  const chainsRef = useRef(CHAINS)
   const cardRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { livePriceRef.current = livePrice }, [livePrice])
   useEffect(() => { chainRef.current = chain }, [chain])
+  useEffect(() => { chainsRef.current = CHAINS })
 
   useEffect(() => {
     const id = setInterval(() => {
-      const ch = CHAINS[chainRef.current]
+      const ch = chainsRef.current[chainRef.current]
       let p = livePriceRef.current
       p += (Math.random() - 0.48) * (ch.price * 0.0015)
       p = Math.max(ch.price * 0.97, Math.min(ch.price * 1.03, p))
@@ -152,7 +198,7 @@ export default function CryptoCard() {
     return () => clearInterval(id)
   }, [])
 
-  useEffect(() => { setLivePrice(CHAINS[chain].price) }, [chain])
+  useEffect(() => { setLivePrice(CHAINS[chain].price) }, [chain, CHAINS[chain].price])
 
   const c = CHAINS[chain]
   const balUsd = c.balance * livePrice
@@ -176,7 +222,7 @@ export default function CryptoCard() {
       const amt = (Math.random() * 5 + 0.1).toFixed(4)
       const usd = fmt(Number(amt) * livePriceRef.current)
       setTxData({
-        amt: (type === 'recv' ? '+' : '') + amt + ' ' + CHAINS[chainRef.current].ticker,
+        amt: (type === 'recv' ? '+' : '') + amt + ' ' + chainsRef.current[chainRef.current].ticker,
         usd: '$ ' + usd,
       })
       setTxActive(true)
@@ -201,10 +247,45 @@ export default function CryptoCard() {
   }, [])
 
   const copyAddr = useCallback((key: string) => {
+    if ((key === 'base' || key === 'eth') && isConnected && address) {
+      navigator.clipboard.writeText(address).catch(() => {})
+    }
     setCopiedAddr(key)
     setTimeout(() => setCopiedAddr(null), 1500)
-  }, [])
+  }, [isConnected, address])
 
+  // ════════════════════════════════════════════════════════
+  // NOT CONNECTED — prompt to use navbar
+  // ════════════════════════════════════════════════════════
+  if (!isConnected) {
+    return (
+      <div className="hero">
+        <style>{cardCSS}</style>
+        <BgElements />
+        <div className="hero-content" style={{ maxWidth: 440 }}>
+          <div className="logo-center">
+            <div className="logo-wrap">
+              <div className="logo-glow" />
+              <img src="/thunder.png" alt="" className="logo-img" />
+            </div>
+            <div className="brand-logo">Zap<span>Card</span></div>
+          </div>
+          <div className="form-card fade-up text-c">
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Your Crypto Card</h2>
+            <p className="text-xs muted" style={{ marginBottom: 20 }}>Connect your wallet to view your card with live balances</p>
+            <div className="connect-hint">
+              <Wallet size={16} />
+              <span>Use the <strong>Connect Wallet</strong> button in the navigation bar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ════════════════════════════════════════════════════════
+  // CONNECTED — full card UI
+  // ════════════════════════════════════════════════════════
   return (
     <div className="hero" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
       <style>{cardCSS}</style>
@@ -271,7 +352,7 @@ export default function CryptoCard() {
                       <div className="zc-card-top">
                         <div>
                           <div className="zc-owner-label">Card Owner</div>
-                          <div className="zc-owner-name">{OWNER_NAME}</div>
+                          <div className="zc-owner-name">{shortAddr(address)}</div>
                         </div>
                         <div className="zc-live-badge">
                           <div className="zc-live-dot live-blink" />
@@ -384,7 +465,7 @@ export default function CryptoCard() {
         {tab === 'settings' && (
           <div className="fade-up">
             <SettingsSection label="Card">
-              <SettingsRow icon="💳" label="Card Name" sub={OWNER_NAME}
+              <SettingsRow icon="💳" label="Card Name" sub={shortAddr(address)}
                 right={<span className="text-s muted">›</span>} />
               <SettingsRow icon="🔔" label="Transaction Alerts" sub="PUSH NOTIFICATIONS"
                 right={<Toggle defaultOn />} />

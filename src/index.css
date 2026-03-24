@@ -921,6 +921,31 @@ input, select { font: inherit; color: inherit; }
   font-weight: 600;
 }
 
+.nav-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* ─── Connect hint (used on gated pages) ─── */
+.connect-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text2);
+  padding: 10px 16px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--elevated);
+}
+.connect-hint strong {
+  color: var(--accent);
+}
+
 /* ─── Footer ─── */
 .site-footer {
   position: fixed;
